@@ -36,9 +36,9 @@ test("server-renders the complete rhythm game shell and social metadata", async 
   assert.match(html, /<html[^>]*\blang=["']ja["'][^>]*>/i);
   assert.match(html, /<title>リズム・エクスプレス<\/title>/i);
   assert.match(html, /リズム・エクスプレス/);
-  assert.match(html, /音楽で世界を走りぬけろ！/);
-  assert.match(html, /わくわく乗車券/);
-  assert.match(html, /わくわく乗車券、あと3回でシール/);
+  assert.match(html, /おんがくで 3つの せかいを はしろう！/);
+  assert.match(html, /わくわく きっぷ/);
+  assert.match(html, /わくわく きっぷ、あと3かいで シール/);
   assert.match(
     html,
     /<meta(?=[^>]*\bname=["']viewport["'])(?=[^>]*\bcontent=["'][^"']*viewport-fit=cover[^"']*["'])[^>]*>/i,

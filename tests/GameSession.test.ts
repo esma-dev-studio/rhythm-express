@@ -65,7 +65,7 @@ test("a run with no successful timing does not report perfect stability", () => 
   session.update(1.2);
   const result = session.result();
   assert.equal(result.stability, 0);
-  assert.match(result.message, /点線の丸/);
+  assert.match(result.message, /ひかりが ○/);
 });
 test("booster accepts each rhythm slot only once", () => {
   const notes: ChartNote[] = [{

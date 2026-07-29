@@ -73,7 +73,7 @@ npm run test:rendered
 npm run test:all
 ```
 
-77件の自動テストで、走行中サプライズの出現時間、再出現防止、固定ボーナス、判定窓、イベント時刻、重複判定防止、Boosterのリズムスロット、Switch分岐、長押し休止、Quiet、Miss継続、FLOW倍率とFLOW DRIVE、列車能力、路線ミッション、AudioContext基準の時刻管理、4拍カウント、音量ミックス、音階循環、全ステージ譜面、設定移行、進行保存を検証します。iPad Safariの`interrupted`状態、`running`表示のまま進まない音声時計、Pointer Events未対応時のTouch Events切り替え、旧式のMediaQueryListリスナー、Canvasの`roundRect`未対応、音声を復旧できない場合の無音運転も再現しています
+78件の自動テストで、小学2年生向け画面に漢字が残っていないこと、走行中サプライズの出現時間、再出現防止、固定ボーナス、判定窓、イベント時刻、重複判定防止、Boosterのリズムスロット、Switch分岐、長押し休止、Quiet、Miss継続、FLOW倍率とFLOW DRIVE、列車能力、路線ミッション、AudioContext基準の時刻管理、4拍カウント、音量ミックス、音階循環、全ステージ譜面、設定移行、進行保存を検証します。iPad Safariの`interrupted`状態、`running`表示のまま進まない音声時計、Pointer Events未対応時のTouch Events切り替え、旧式のMediaQueryListリスナー、Canvasの`roundRect`未対応、音声を復旧できない場合の無音運転も再現しています
 
 ## タイミング設計
 

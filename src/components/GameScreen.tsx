@@ -344,7 +344,7 @@ export function GameScreen({
     session.setDriveActive(true);
     audio.setDrive(true);
     setEffects(effectsManager.snapshot());
-    showFeedback({ label: "FLOW DRIVE！ スコア2倍", energyDelta: 0 }, false);
+    showFeedback({ label: "スーパーそうこう！ てんすう2ばい", energyDelta: 0 }, false);
   }, [audio, effectsManager, session, showFeedback]);
 
   const completeAdventureEncounter = useCallback(() => {
@@ -447,9 +447,9 @@ export function GameScreen({
   const goalProgress = getRunGoalProgress(goals, session.stats);
   const flowMultiplier = session.flowMultiplier;
   const crew = {
-    city: { name: "車掌ミナモ", face: "🧑‍✈️" },
-    jungle: { name: "リズム隊トト", face: "🐵" },
-    moon: { name: "星読みルクス", face: "🦊" },
+    city: { name: "しゃしょう ミナモ", face: "🧑‍✈️" },
+    jungle: { name: "リズムたい トト", face: "🐵" },
+    moon: { name: "ほしよみ ルクス", face: "🦊" },
   }[stage.id];
   const crewMood = activeEncounter || encounterSuccess
     ? "excited"
@@ -459,20 +459,20 @@ export function GameScreen({
         ? "excited"
         : "ready";
   const crewMessage = countdown > 0
-    ? "音をきいて、しゅっぱつ！"
+    ? "おとを きいて、しゅっぱつ！"
     : encounterSuccess
       ? encounterSuccess.successMessage
       : activeEncounter
         ? activeEncounter.actionLabel + "をタップ！"
         : feedback?.judgement === "miss"
-          ? "だいじょうぶ！ つぎの音へ！"
+          ? "だいじょうぶ！ つぎの おとへ！"
           : feedback?.judgement === "perfect"
             ? "どまんなか！ すごい！"
             : effects.driveReady
-              ? "ゲージ満タン！ DRIVEだ！"
+              ? "パワーいっぱい！ スーパーそうこう！"
               : combo >= 8
                 ? `${combo}コンボ！ そのちょうし！`
-                : "光がかさなったら BEAT！";
+                : "ひかりが かさなったら おす！";
 
   return (
     <main className={"game-screen game-" + stage.theme + (effects.overdrive ? " is-flow-drive" : "")} data-testid="game-screen">
@@ -480,21 +480,21 @@ export function GameScreen({
         <div className="hud-route">
           <span>{stage.name}</span>
           <strong><i aria-hidden="true" />{stage.destination}</strong>
-          {silentPlayback && <small className="silent-mode-badge">音なし運転</small>}
+          {silentPlayback && <small className="silent-mode-badge">おとなし</small>}
         </div>
         <div className="hud-progress-cluster">
-          <div className="hud-progress" aria-label={"路線進捗 " + progressPercent + "%"}>
+          <div className="hud-progress" aria-label={"ゴールまで " + progressPercent + "%"}>
             <i style={{ width: progressPercent + "%" }} />
             <b style={{ left: `calc(${progressPercent}% - 6px)` }} aria-hidden="true" />
           </div>
           <span>{progressPercent}%</span>
         </div>
         <div className={"hud-score" + (combo >= 5 ? " has-combo" : "")}>
-          <span>SCORE <strong>{score.toLocaleString()}</strong></span>
-          <span>COMBO <strong>{combo}</strong></span>
-          <span>FLOW <strong>×{flowMultiplier.toFixed(2)}</strong></span>
+          <span>てんすう <strong>{score.toLocaleString()}</strong></span>
+          <span>つづいた <strong>{combo}</strong></span>
+          <span>ノリ <strong>×{flowMultiplier.toFixed(2)}</strong></span>
         </div>
-        <button ref={pauseButtonRef} className="pause-button" type="button" onClick={pauseGame} disabled={pausing} aria-label="一時停止">Ⅱ</button>
+        <button ref={pauseButtonRef} className="pause-button" type="button" onClick={pauseGame} disabled={pausing} aria-label="ちょっと やすむ">Ⅱ</button>
       </div>
 
       <div className="game-stage" inert={paused}>
@@ -513,7 +513,7 @@ export function GameScreen({
           <span className="crew-face" aria-hidden="true">{crew.face}</span>
           <span><small>{crew.name}</small><strong>{crewMessage}</strong></span>
         </div>
-        <div className="run-mission-strip" aria-label="今回の路線ミッション">
+        <div className="run-mission-strip" aria-label="3つの おねがい">
           <span className="run-train-perk">{selectedTrain.perkShort}</span>
           {goalProgress.map((goal) => (
             <span className={"mission-pill" + (goal.complete ? " is-complete" : "")} key={goal.id}>
@@ -527,7 +527,7 @@ export function GameScreen({
         {!activeEncounter && (
           <div className="adventure-progress" aria-label={"サプライズ " + completedEncounters + " / " + encounters.length}>
             <span aria-hidden="true">✨</span>
-            <small>WORLD ACTION</small>
+            <small>サプライズ</small>
             <strong>{completedEncounters}/{encounters.length}</strong>
           </div>
         )}
@@ -535,7 +535,7 @@ export function GameScreen({
           <section className={"adventure-encounter encounter-" + stage.id} aria-live="polite">
             <div className="encounter-character" aria-hidden="true">{activeEncounter.icon}</div>
             <div className="encounter-copy">
-              <small>SURPRISE {completedEncounters + 1}/{encounters.length}</small>
+              <small>サプライズ {completedEncounters + 1}/{encounters.length}</small>
               <strong>{activeEncounter.title}</strong>
               <span>{activeEncounter.prompt}</span>
             </div>
@@ -544,14 +544,14 @@ export function GameScreen({
               <strong>{activeEncounter.actionLabel}</strong>
               <small>タップ！</small>
             </button>
-            <p>見逃してもへっちゃら。できたら +750</p>
+            <p>できなくても へっちゃら。できたら +750</p>
           </section>
         )}
         {encounterSuccess && (
           <div className={"encounter-celebration celebration-" + stage.id} aria-live="polite">
             <span aria-hidden="true">{encounterSuccess.icon}</span>
             <strong>{encounterSuccess.successMessage}</strong>
-            <small>+750 SCORE　+18 ENERGY</small>
+            <small>+750 てん　+18 パワー</small>
             <i aria-hidden="true">★</i><i aria-hidden="true">●</i><i aria-hidden="true">◆</i>
           </div>
         )}
@@ -559,20 +559,20 @@ export function GameScreen({
           <div className={"hit-feedback judgement-" + (feedback.judgement ?? "hint")} aria-live="polite">
             <strong>{feedback.label}</strong>
             {feedback.deltaMs !== undefined && feedback.judgement !== "miss" && (
-              <small>{feedback.deltaMs < -12 ? "少し早め" : feedback.deltaMs > 12 ? "少し遅め" : "まんなか"}</small>
+              <small>{feedback.deltaMs < -12 ? "すこし はやめ" : feedback.deltaMs > 12 ? "すこし おそめ" : "まんなか"}</small>
             )}
           </div>
         )}
         {countdown > 0 && (
           <div className="countdown-overlay" aria-live="assertive">
             <span>{countdown}</span>
-            <small>あと {countdown} はく。音を聞いてじゅんび！</small>
+            <small>あと {countdown} はく。おとを きいて じゅんび！</small>
           </div>
         )}
-        <div className="energy-meter" aria-label={"ビートエネルギー " + Math.round(effects.energy)}>
+        <div className="energy-meter" aria-label={"ビートパワー " + Math.round(effects.energy)}>
           <span className="energy-meter-head">
-            <span>{effects.overdrive ? "FLOW DRIVE" : "BEAT ENERGY"}</span>
-            <strong>{effects.overdrive ? `${effects.overdriveRemaining.toFixed(1)}秒` : `${Math.round(effects.energy)}%`}</strong>
+            <span>{effects.overdrive ? "スーパーそうこう" : "ビートパワー"}</span>
+            <strong>{effects.overdrive ? `${effects.overdriveRemaining.toFixed(1)}びょう` : `${Math.round(effects.energy)}%`}</strong>
           </span>
           <i><b style={{ width: effects.energy + "%" }} /></i>
           <button
@@ -580,18 +580,18 @@ export function GameScreen({
             type="button"
             onClick={activateDrive}
             disabled={!effects.driveReady}
-            aria-label="エネルギー80%以上でFLOW DRIVEを発動。8秒間スコア2倍"
+            aria-label="パワーが 80に なったら おせるよ。8びょう てんすう2ばい"
           >
-            <span>{effects.overdrive ? "DRIVING" : effects.driveReady ? "FLOW DRIVE" : `あと${Math.max(0, Math.ceil(80 - effects.energy))}`}</span>
-            <small>{effects.overdrive ? "×2 SCORE" : effects.driveReady ? "発動する / F" : "ENERGY"}</small>
+            <span>{effects.overdrive ? "そうこうちゅう" : effects.driveReady ? "スーパーそうこう" : `あと${Math.max(0, Math.ceil(80 - effects.energy))}`}</span>
+            <small>{effects.overdrive ? "てんすう ×2" : effects.driveReady ? "ここを おす！" : "パワー"}</small>
           </button>
         </div>
       </div>
 
       <p id="beat-timing-help" className="sr-only">
-        マークが点線の丸にぴったり重なったときに押します。長い光は終わりまで押します。
+        ひかりが ○に ぴったり かさなったら おす。ながい ひかりは おしたまま。
       </p>
-      <div className={"touch-controls" + (hasSwitch ? "" : " beat-only")} aria-label="運転操作" inert={paused}>
+      <div className={"touch-controls" + (hasSwitch ? "" : " beat-only")} aria-label="あそぶ ボタン" inert={paused}>
         <button
           type="button"
           className="direction-pad"
@@ -605,7 +605,7 @@ export function GameScreen({
           onMouseDown={(event) => beginMouseInput("left", event)}
           onMouseUp={(event) => endMouseInput("left", event)}
           onMouseLeave={(event) => endMouseInput("left", event)}
-          aria-label="左へ線路を切り替える"
+          aria-label="ひだりへ きりかえる"
           data-game-input="true"
         >
           ←
@@ -625,13 +625,13 @@ export function GameScreen({
           onMouseUp={(event) => endMouseInput("tap", event)}
           onMouseLeave={(event) => endMouseInput("tap", event)}
           onContextMenu={(event) => event.preventDefault()}
-          aria-label="ビートをタップ、長い光では長押し"
+          aria-label="ひかりに あわせて おす。ながい ひかりは ながおし"
           aria-describedby="beat-timing-help"
           data-game-input="true"
           data-testid="beat-pad"
         >
-          <span>BEAT</span>
-          <small>タップ / 長押し</small>
+          <span><i aria-hidden="true">👆</i> おす！</span>
+          <small>タップ / ながおし</small>
         </button>
         <button
           type="button"
@@ -646,7 +646,7 @@ export function GameScreen({
           onMouseDown={(event) => beginMouseInput("right", event)}
           onMouseUp={(event) => endMouseInput("right", event)}
           onMouseLeave={(event) => endMouseInput("right", event)}
-          aria-label="右へ線路を切り替える"
+          aria-label="みぎへ きりかえる"
           data-game-input="true"
         >
           →
@@ -654,23 +654,23 @@ export function GameScreen({
       </div>
 
       <p className="keyboard-hint">
-        {hasSwitch ? "Space: ビート　← →: 線路きりかえ　F: DRIVE　P: 休む" : "Space: ビート　F: DRIVE　P: 休む"}
+        {hasSwitch ? "スペース: おす　← →: みち　F: スーパー　P: やすむ" : "スペース: おす　F: スーパー　P: やすむ"}
       </p>
 
       {paused && (
-        <div ref={pauseDialogRef} className="pause-overlay" role="dialog" aria-modal="true" aria-label="一時停止中" onKeyDown={trapPauseFocus}>
+        <div ref={pauseDialogRef} className="pause-overlay" role="dialog" aria-modal="true" aria-label="おやすみ ちゅう" onKeyDown={trapPauseFocus}>
           <section>
-            <p className="eyebrow">PAUSED</p>
-            <h2>列車は待機中</h2>
-            <p>{pausing ? "音を安全に止めています…" : "準備ができたら、同じ場所から再開します"}</p>
+            <p className="eyebrow">ひとやすみ</p>
+            <h2>れっしゃは おやすみちゅう</h2>
+            <p>{pausing ? "おとを とめているよ…" : "じゅんびが できたら、ここから つづけるよ"}</p>
             <button ref={resumeButtonRef} className="primary-command" type="button" onClick={resumeGame} disabled={pausing || resuming}>
-              {pausing ? "音を止めています…" : resuming ? "音をつなぎ直しています…" : "運転をつづける"}
+              {pausing ? "おとを とめているよ…" : resuming ? "おとを つなぎなおしているよ…" : "つづきから あそぶ"}
             </button>
             <button className="secondary-command" type="button" onClick={onRestart} disabled={pausing || resuming}>
-              最初から走る
+              はじめから あそぶ
             </button>
             <button className="text-command" type="button" onClick={onExit} disabled={pausing || resuming}>
-              ワールドマップへ
+              コースを えらぶ
             </button>
           </section>
         </div>

@@ -44,8 +44,8 @@ function routeGoal(stage: StageDefinition, difficulty: Difficulty): RunGoal {
     return {
       id: "city-center-beat",
       metric: "perfect",
-      label: "センタービート",
-      description: `PERFECTを${target}回きめる`,
+      label: "ぴったり ビート",
+      description: `ぴったりを ${target}かい きめる`,
       target,
     };
   }
@@ -57,8 +57,8 @@ function routeGoal(stage: StageDefinition, difficulty: Difficulty): RunGoal {
     return {
       id: "jungle-call-response",
       metric: "routeMastery",
-      label: "ジャングル・コール",
-      description: `しずか＆ブーストを${Math.max(1, target)}回成功`,
+      label: "もりの リズム",
+      description: `しずか＆れんだを ${Math.max(1, target)}かい できる`,
       target: Math.max(1, target),
     };
   }
@@ -68,8 +68,8 @@ function routeGoal(stage: StageDefinition, difficulty: Difficulty): RunGoal {
     return {
       id: "moon-switch-master",
       metric: "switchSuccess",
-      label: "星空ルート",
-      description: `分岐レバーを${switchTarget}回成功させる`,
+      label: "ほしぞら コース",
+      description: `レバーを ${switchTarget}かい せいかいする`,
       target: switchTarget,
     };
   }
@@ -77,8 +77,8 @@ function routeGoal(stage: StageDefinition, difficulty: Difficulty): RunGoal {
   return {
     id: "moon-flow-drive",
     metric: "driveActivations",
-    label: "ムーン・ドライブ",
-    description: "FLOW DRIVEを1回発動する",
+    label: "つきの スーパー",
+    description: "スーパーそうこうを 1かい つかう",
     target: 1,
   };
 }
@@ -96,15 +96,15 @@ export function getRunGoals(
     {
       id: "rhythm-accuracy",
       metric: "accuracy",
-      label: "リズム精度",
-      description: `${ACCURACY_TARGET[difficulty]}%以上で走る`,
+      label: "ぴったりど",
+      description: `${ACCURACY_TARGET[difficulty]}%いじょうで はしる`,
       target: ACCURACY_TARGET[difficulty],
     },
     {
       id: "combo-line",
       metric: "maxCombo",
-      label: "コンボライン",
-      description: `${comboTarget}コンボをつなぐ`,
+      label: "つづけて おす",
+      description: `${comboTarget}かい つづける`,
       target: comboTarget,
     },
     routeGoal(stage, difficulty),
@@ -124,7 +124,7 @@ function valueForGoal(goal: RunGoal, stats: SessionStats): number {
 
 function valueLabel(goal: RunGoal, value: number): string {
   if (goal.metric === "accuracy") return `${value}%`;
-  if (goal.metric === "maxCombo") return `${value} COMBO`;
+  if (goal.metric === "maxCombo") return `${value}かい`;
   return `${Math.min(value, goal.target)}/${goal.target}`;
 }
 

@@ -116,7 +116,7 @@ export class GameSession {
       const quiet = this.chart.active("quiet", now);
       if (quiet) {
         quiet.quietBroken = true;
-        return { label: "しずかに通ろう", noteType: "quiet", energyDelta: -3 };
+        return { label: "しずかに とおろう", noteType: "quiet", energyDelta: -3 };
       }
     }
 
@@ -125,7 +125,7 @@ export class GameSession {
 
       const holdingBeam = this.chart.holdingBeam();
       if (holdingBeam) {
-        return { label: "長押しをつづけよう。終点で離してね", noteType: "beam", energyDelta: 0 };
+        return { label: "ながおしを つづけよう。おわりで はなしてね", noteType: "beam", energyDelta: 0 };
       }
 
       const booster = this.chart.active("booster", now);
@@ -150,16 +150,16 @@ export class GameSession {
         return this.finish(spark, judgeTiming(deltaMs, this.difficulty), deltaMs);
       }
 
-      return { label: "リズムをよく聞こう", energyDelta: -1 };
+      return { label: "リズムを よく きこう", energyDelta: -1 };
     }
 
     if (!isDown) return null;
     const switchNote = this.chart.nearest(["switch"], now, this.difficulty);
-    if (!switchNote) return { label: "次の分かれ道を見よう", energyDelta: -1 };
+    if (!switchNote) return { label: "つぎの わかれみちを みよう", energyDelta: -1 };
     const deltaMs = (now - switchNote.time) * 1000;
     if (switchNote.direction !== action) {
       const result = this.finish(switchNote, "miss", deltaMs);
-      return { ...result, label: "反対のレバー！次は矢印を見よう" };
+      return { ...result, label: "はんたいの レバー！ つぎは やじるしを みよう" };
     }
     this.routeLane = action === "left" ? -1 : 1;
     const result = this.finish(switchNote, judgeTiming(deltaMs, this.difficulty), deltaMs);
@@ -186,12 +186,12 @@ export class GameSession {
         const judgement: Judgement = ratio >= 1 ? "perfect" : ratio >= 0.65 ? "great" : ratio >= 0.4 ? "good" : "miss";
         const result = this.finish(note, judgement, 0);
         if (judgement !== "miss") this.stats.boosterSuccess += 1;
-        feedback.push({ ...result, label: judgement === "miss" ? "次は拍に合わせて連打！" : "ブースト成功！" });
+        feedback.push({ ...result, label: judgement === "miss" ? "つぎは おとに あわせて れんだ！" : "れんだ できた！" });
       } else if (note.type === "quiet" && now >= end) {
         const judgement: Judgement = note.quietBroken ? "miss" : "perfect";
         const result = this.finish(note, judgement, 0);
         if (!note.quietBroken) this.stats.quietSuccess += 1;
-        feedback.push({ ...result, label: note.quietBroken ? "次は静かに通ろう" : "しずかな通過、大成功！" });
+        feedback.push({ ...result, label: note.quietBroken ? "つぎは しずかに とおろう" : "しずかに とおれた！" });
       }
     }
     return feedback;
@@ -201,7 +201,7 @@ export class GameSession {
     void audioTime;
     const beam = this.chart.holdingBeam();
     if (!beam) return null;
-    return { label: "長押しは保存中。再開したらBEATを押し直そう", noteType: "beam", energyDelta: 0 };
+    return { label: "ながおしは だいじょうぶ。つづけたら「おす！」を おしなおそう", noteType: "beam", energyDelta: 0 };
   }
 
   private hitBooster(booster: RuntimeNote, now: number): HitFeedback {
@@ -211,7 +211,7 @@ export class GameSession {
     const slotTime = booster.time + slot * interval;
     const tolerance = Math.min(DIFFICULTIES[this.difficulty].goodMs / 1000, interval * 0.42);
     if (slot < 0 || slot >= targetHits || Math.abs(now - slotTime) > tolerance || booster.boosterHitSlots.includes(slot)) {
-      return { label: "光る拍に合わせよう", noteType: "booster", energyDelta: -1 };
+      return { label: "ひかる おとに あわせよう", noteType: "booster", energyDelta: -1 };
     }
     booster.boosterHitSlots.push(slot);
     booster.tapCount = booster.boosterHitSlots.length;
@@ -228,7 +228,7 @@ export class GameSession {
     const judgement = worseJudgement(startJudgement, releaseJudgement);
     const result = this.finish(beam, judgement, deltaMs);
     if (judgement !== "miss") this.stats.beamSuccess += 1;
-    return { ...result, label: judgement === "miss" ? "最後までのばしてみよう" : "長い音をキープ！" };
+    return { ...result, label: judgement === "miss" ? "おわりまで のばしてみよう" : "ながい おとを キープ！" };
   }
 
   private finish(note: RuntimeNote, judgement: Judgement, deltaMs: number): HitFeedback {
@@ -279,16 +279,16 @@ export class GameSession {
     const base = Math.max(1, offsets.length);
     const message =
       accuracy >= 90
-        ? "テンポを最後までキープできた！"
+        ? "おなじ テンポで さいごまで できた！"
         : offsets.length === 0
-          ? "最後まで走れた！次は光が点線の丸に重なる時に押してみよう"
+          ? "さいごまで はしれた！ つぎは ひかりが ○に かさなったら おしてみよう"
           : stability >= 72
-          ? "同じ速さでリズムを刻めた！"
+          ? "おなじ はやさで リズムを きざめた！"
           : average < -18
-            ? "少し先に押すことが多かったよ"
+            ? "すこし はやく おすことが おおかったよ"
             : average > 18
-              ? "音を聞いてから押すともっと合いそう！"
-              : "後半になるほどタイミングが良くなった！";
+              ? "おとを きいてから おすと もっと あいそう！"
+              : "さいごに ちかづくほど うまく なった！";
 
     const baseResult = {
       ...this.stats,

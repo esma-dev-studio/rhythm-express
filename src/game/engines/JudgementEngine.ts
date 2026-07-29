@@ -4,7 +4,7 @@ export const DIFFICULTIES: Record<Difficulty, DifficultyDefinition> = {
   easy: {
     id: "easy",
     name: "かんたん",
-    description: "大きなマークと広い判定で、はじめてでも安心",
+    description: "おおきな マークで、はじめてでも だいじょうぶ",
     perfectMs: 105,
     greatMs: 170,
     goodMs: 240,
@@ -13,7 +13,7 @@ export const DIFFICULTIES: Record<Difficulty, DifficultyDefinition> = {
   normal: {
     id: "normal",
     name: "ふつう",
-    description: "長押しや線路切り替えも楽しめる標準コース",
+    description: "ながおしや みちの きりかえも でてくるよ",
     perfectMs: 70,
     greatMs: 120,
     goodMs: 180,
@@ -22,7 +22,7 @@ export const DIFFICULTIES: Record<Difficulty, DifficultyDefinition> = {
   challenge: {
     id: "challenge",
     name: "チャレンジ",
-    description: "細かな裏拍に挑む、リズム上級コース",
+    description: "こまかい リズムにも ちょうせん！",
     perfectMs: 52,
     greatMs: 92,
     goodMs: 145,
@@ -60,6 +60,6 @@ export function judgementScore(judgement: Judgement): number {
 export function judgementLabel(judgement: Judgement): string {
   if (judgement === "perfect") return "ぴったり！";
   if (judgement === "great") return "いいね！";
-  if (judgement === "good") return "もう少し！";
-  return "次で合わせよう！";
+  if (judgement === "good") return "もう すこし！";
+  return "つぎで あわせよう！";
 }

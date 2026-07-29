@@ -329,7 +329,7 @@ export default function GameApp() {
       {screen === "parents" && <ParentsScreen onBack={goHome} />}
 
       <div className="sr-only" aria-live="polite">
-        全{STAGES.length}路線、現在地は{screen}
+        コースは {STAGES.length}こ。いまの がめんは {screen}
       </div>
       </div>
 
@@ -345,19 +345,19 @@ export default function GameApp() {
             {launchStatus === "preparing" ? (
               <>
                 <span className="launch-spinner" aria-hidden="true"><i /><i /><i /></span>
-                <p className="eyebrow">DEPARTURE CHECK</p>
-                <h2 id="launch-dialog-title">音と列車を準備中</h2>
-                <p id="launch-dialog-description">画面を閉じずに、少しだけ待ってね</p>
+                <p className="eyebrow">しゅっぱつ まえ</p>
+                <h2 id="launch-dialog-title">おとと れっしゃを じゅんびちゅう</h2>
+                <p id="launch-dialog-description">このまま すこし まってね</p>
               </>
             ) : (
               <>
                 <span className="launch-warning" aria-hidden="true">!</span>
-                <p className="eyebrow">もういちど準備</p>
-                <h2 id="launch-dialog-title">音の準備ができませんでした</h2>
-                <p id="launch-dialog-description">iPadの音声機能を使えませんでした。もう一度試すか、音なしで運転できます</p>
-                <button ref={retryLaunchButtonRef} className="primary-command" type="button" onClick={retryLaunch}>もう一度ためす</button>
-                <button className="secondary-command" type="button" onClick={launchWithoutSound}>音なしで運転する</button>
-                <button className="text-command" type="button" onClick={dismissLaunchError}>いったん戻る</button>
+                <p className="eyebrow">もう いちど じゅんび</p>
+                <h2 id="launch-dialog-title">おとの じゅんびが できなかったよ</h2>
+                <p id="launch-dialog-description">おとが でないときは、もう いちど ためすか、おとなしで あそべるよ</p>
+                <button ref={retryLaunchButtonRef} className="primary-command" type="button" onClick={retryLaunch}>もう いちど ためす</button>
+                <button className="secondary-command" type="button" onClick={launchWithoutSound}>おとなしで あそぶ</button>
+                <button className="text-command" type="button" onClick={dismissLaunchError}>いったん もどる</button>
               </>
             )}
           </section>

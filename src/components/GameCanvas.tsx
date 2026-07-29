@@ -504,9 +504,9 @@ function getTargetGuide(notes: RuntimeNote[], playhead: number): TargetGuide {
   const next = [...notes]
     .filter((note) => note.state === "pending" && note.time >= playhead - 0.28)
     .sort((a, b) => a.time - b.time)[0];
-  if (!next) return { time: null, label: "音を きこう", mode: "listen" };
+  if (!next) return { time: null, label: "おとを きこう", mode: "listen" };
   if (next.type === "quiet") return { time: next.time, label: "ここは おやすみ", mode: "rest" };
-  if (next.type === "beam") return { time: next.time, label: "ここで 長おし", mode: "hold" };
+  if (next.type === "beam") return { time: next.time, label: "ここで ながおし", mode: "hold" };
   if (next.type === "booster") return { time: next.time, label: "ひかるたび おす", mode: "repeat" };
   if (next.type === "switch") {
     return { time: next.time, label: next.direction === "left" ? "← を おす" : "→ を おす", mode: "switch" };
@@ -918,7 +918,7 @@ export function GameCanvas(props: GameCanvasProps) {
     <canvas
       ref={canvasRef}
       className="game-canvas"
-      aria-label={props.stage.name + "の走行風景。マークが点線の丸に重なったときに操作します"}
+      aria-label={props.stage.name + "を はしっているよ。ひかりが ○に かさなったら おそう"}
     />
   );
 }
@@ -952,5 +952,5 @@ export function AttractCanvas() {
       trainColor: STAGES[0].colors.accent,
     };
   });
-  return <canvas ref={canvasRef} className="attract-canvas" aria-label="朝の街を走るリズム列車" />;
+  return <canvas ref={canvasRef} className="attract-canvas" aria-label="あさの まちを はしる リズムれっしゃ" />;
 }

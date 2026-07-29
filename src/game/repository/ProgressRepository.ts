@@ -95,9 +95,9 @@ export class ProgressRepository {
     if (!next.stationStamps.includes(stage)) next.stationStamps.push(stage);
 
     const unlockMap: Record<StageTheme, string[]> = {
-      city: ["forest-line", "車掌のミナモ"],
-      jungle: ["percussion-car", "リズム隊のトト"],
-      moon: ["starlight", "星読みのルクス"],
+      city: ["forest-line", "しゃしょうの ミナモ"],
+      jungle: ["percussion-car", "リズムたいの トト"],
+      moon: ["starlight", "ほしよみの ルクス"],
     };
     const unlocked: string[] = [];
     const [train, passenger] = unlockMap[stage];
