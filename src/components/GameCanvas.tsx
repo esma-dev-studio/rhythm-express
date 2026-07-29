@@ -493,7 +493,58 @@ function drawRoadsideObjects(
 }
 
 function noteDepthAt(delta: number, travelTime: number): number {
-  return clamp01(1 - delta / Math.max(0.5, travelTime));
+  const progress = clamp01(1 - delta / Math.max(0.5, travelTime));
+  return Math.pow(progress, 0.58);
+}
+
+function drawTimingLane(
+  context: CanvasRenderingContext2D,
+  width: number,
+  state: SceneState,
+  geometry: CabGeometry,
+): void {
+  const far = pointOnTrack(geometry, width, 0.08);
+  const near = pointOnTrack(geometry, width, 1);
+  const laneHalf = Math.max(42, width * 0.075);
+  context.save();
+  const lane = context.createLinearGradient(0, far.y, 0, near.y);
+  lane.addColorStop(0, "rgba(226, 184, 93, 0)");
+  lane.addColorStop(0.42, "rgba(226, 184, 93, 0.055)");
+  lane.addColorStop(1, "rgba(226, 184, 93, 0.14)");
+  context.fillStyle = lane;
+  context.beginPath();
+  context.moveTo(far.x - 3, far.y);
+  context.lineTo(far.x + 3, far.y);
+  context.lineTo(near.x + laneHalf, geometry.targetY);
+  context.lineTo(near.x - laneHalf, geometry.targetY);
+  context.closePath();
+  context.fill();
+
+  context.strokeStyle = "rgba(243, 218, 158, 0.38)";
+  context.lineWidth = 1.5;
+  context.setLineDash([5, 8]);
+  for (const side of [-1, 1]) {
+    context.beginPath();
+    context.moveTo(far.x + side * 3, far.y);
+    context.lineTo(near.x + side * laneHalf, geometry.targetY);
+    context.stroke();
+  }
+  context.setLineDash([]);
+
+  for (const progress of [0.24, 0.46, 0.68]) {
+    const depth = Math.pow(progress, 0.58);
+    const point = pointOnTrack(geometry, width, depth);
+    const markerHalf = mix(8, laneHalf * 0.68, progress);
+    context.globalAlpha = 0.3 + progress * 0.3;
+    context.strokeStyle = "#e0bd6b";
+    context.lineWidth = 2;
+    context.beginPath();
+    context.moveTo(point.x - markerHalf, point.y - 5);
+    context.lineTo(point.x, point.y + 4);
+    context.lineTo(point.x + markerHalf, point.y - 5);
+    context.stroke();
+  }
+  context.restore();
 }
 
 function drawSignalHousing(
@@ -533,13 +584,22 @@ function drawPerspectiveNote(
   width: number,
 ): void {
   const delta = note.time - state.playhead;
-  const depth = Math.pow(noteDepthAt(delta, state.travelTime), 1.05);
+  const depth = noteDepthAt(delta, state.travelTime);
   const point = pointOnTrack(geometry, width, depth);
-  const size = mix(5, Math.max(28, width * 0.035), Math.pow(depth, 1.55));
+  const size = mix(10, Math.max(34, width * 0.04), Math.pow(depth, 1.18));
   const isClose = depth > 0.72;
   context.save();
+  if (note.type !== "quiet") {
+    context.globalAlpha = mix(0.28, 0.88, depth);
+    context.strokeStyle = "#fff0bd";
+    context.lineWidth = Math.max(1.5, size * 0.08);
+    context.beginPath();
+    context.arc(point.x, point.y, size * 0.86, 0, Math.PI * 2);
+    context.stroke();
+    context.globalAlpha = 1;
+  }
   if (note.type === "beam") {
-    const endDepth = Math.pow(noteDepthAt(note.time + note.duration - state.playhead, state.travelTime), 1.05);
+    const endDepth = noteDepthAt(note.time + note.duration - state.playhead, state.travelTime);
     const endPoint = pointOnTrack(geometry, width, endDepth);
     context.strokeStyle = note.state === "holding" ? "#f7f0d0" : "#d6a64f";
     context.lineWidth = Math.max(3, size * 0.44);
@@ -617,41 +677,81 @@ function drawTargetGate(
 ): void {
   const guide = getTargetGuide(state.notes, state.playhead);
   const rest = guide.mode === "rest";
-  const color = rest ? "#8fa0a0" : "#e6b85d";
+  const beatSeconds = 60 / state.stage.bpm;
+  const delta = guide.time === null ? Number.POSITIVE_INFINITY : guide.time - state.playhead;
+  const timingWindow = Math.max(0.15, beatSeconds * 0.3);
+  const dueNow = !rest && Math.abs(delta) <= timingWindow;
+  const color = rest ? "#91a09f" : dueNow ? "#fff0b8" : "#e6b85d";
   const beat = rhythmPulseAt(state.playhead, state.stage.bpm);
   const point = pointOnTrack(geometry, width, 1);
   const half = point.half * 1.12;
+  const radius = Math.max(34, Math.min(48, width * 0.042));
   context.save();
-  context.strokeStyle = "rgba(10, 15, 16, 0.86)";
-  context.lineWidth = 13;
+
+  context.strokeStyle = "rgba(8, 13, 14, 0.9)";
+  context.lineWidth = 14;
   context.beginPath();
   context.moveTo(point.x - half, geometry.targetY);
   context.lineTo(point.x + half, geometry.targetY);
   context.stroke();
   context.strokeStyle = color;
-  context.lineWidth = 4 + beat * 2.2;
+  context.lineWidth = dueNow ? 6 : 4;
   context.shadowColor = color;
-  context.shadowBlur = rest ? 0 : 4 + beat * 7;
+  context.shadowBlur = rest ? 0 : dueNow ? 18 : 6 + beat * 5;
   context.beginPath();
   context.moveTo(point.x - half, geometry.targetY);
   context.lineTo(point.x + half, geometry.targetY);
   context.stroke();
+
+  context.strokeStyle = "rgba(8, 13, 14, 0.94)";
+  context.lineWidth = 13;
+  context.beginPath();
+  context.arc(point.x, geometry.targetY, radius, 0, Math.PI * 2);
+  context.stroke();
+  context.strokeStyle = color;
+  context.lineWidth = dueNow ? 6 : 4;
+  context.beginPath();
+  context.arc(point.x, geometry.targetY, radius, 0, Math.PI * 2);
+  context.stroke();
+  if (dueNow) {
+    context.globalAlpha = 0.22 + beat * 0.18;
+    context.fillStyle = color;
+    context.beginPath();
+    context.arc(point.x, geometry.targetY, radius - 5, 0, Math.PI * 2);
+    context.fill();
+    context.globalAlpha = 1;
+  }
   context.shadowBlur = 0;
-  context.font = "900 13px sans-serif";
-  const labelWidth = Math.max(92, context.measureText(guide.label).width + 34);
-  context.fillStyle = "rgba(18, 25, 27, 0.94)";
-  context.strokeStyle = "#8d9794";
-  context.lineWidth = 1.5;
-  roundedRect(context, point.x - labelWidth / 2, geometry.targetY - 39, labelWidth, 28, 4);
+
+  const label = rest
+    ? "いまは おさない"
+    : dueNow
+      ? guide.mode === "release" ? "いま！ はなす！" : "いま！ おす！"
+      : guide.mode === "press" ? "ここに あわせる" : guide.label;
+  context.font = dueNow ? "1000 18px sans-serif" : "900 14px sans-serif";
+  const labelWidth = Math.max(132, context.measureText(label).width + 38);
+  const labelY = geometry.targetY - radius - (dueNow || rest ? 44 : 68);
+  context.fillStyle = dueNow ? "rgba(238, 204, 119, 0.97)" : "rgba(16, 23, 25, 0.96)";
+  context.strokeStyle = dueNow ? "#fff0bc" : "#89928f";
+  context.lineWidth = dueNow ? 2.5 : 1.5;
+  roundedRect(context, point.x - labelWidth / 2, labelY, labelWidth, 34, 4);
   context.fill();
   context.stroke();
-  context.fillStyle = rest ? "#d7dfdc" : "#f2c76d";
+  context.fillStyle = dueNow ? "#151b1c" : rest ? "#d7dfdc" : "#f0ca76";
   context.textAlign = "center";
   context.textBaseline = "middle";
-  context.fillText(guide.label, point.x, geometry.targetY - 25);
+  context.fillText(label, point.x, labelY + 17);
+
+  if (!dueNow && !rest) {
+    context.fillStyle = "rgba(16, 23, 25, 0.86)";
+    roundedRect(context, point.x - 86, labelY + 38, 172, 23, 3);
+    context.fill();
+    context.fillStyle = "#f0e8d4";
+    context.font = "800 11px sans-serif";
+    context.fillText("ひかりを わくに あわせる", point.x, labelY + 50);
+  }
   context.restore();
 }
-
 function drawCabFrame(
   context: CanvasRenderingContext2D,
   width: number,
@@ -813,6 +913,7 @@ function drawScene(
   drawPerspectiveTrack(context, width, height, travel, state, geometry, palette);
   drawRoadsideObjects(context, width, travel, state, geometry, palette);
   drawCabSpeed(context, width, height, state, geometry);
+  if (!state.titleMode) drawTimingLane(context, width, state, geometry);
   if (!state.titleMode) {
     const visibleNotes = [...state.notes].sort((left, right) => right.time - left.time);
     for (const note of visibleNotes) drawPerspectiveNote(context, note, state, geometry, width);
