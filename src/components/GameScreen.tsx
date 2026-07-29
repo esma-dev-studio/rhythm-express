@@ -447,9 +447,9 @@ export function GameScreen({
   const goalProgress = getRunGoalProgress(goals, session.stats);
   const flowMultiplier = session.flowMultiplier;
   const crew = {
-    city: { name: "しゃしょう ミナモ", face: "🧑‍✈️" },
-    jungle: { name: "リズムたい トト", face: "🐵" },
-    moon: { name: "ほしよみ ルクス", face: "🦊" },
+    city: { name: "しゃしょう ミナモ" },
+    jungle: { name: "リズムたい トト" },
+    moon: { name: "ほしよみ ルクス" },
   }[stage.id];
   const crewMood = activeEncounter || encounterSuccess
     ? "excited"
@@ -510,7 +510,7 @@ export function GameScreen({
           trainColor={trainColor}
         />
         <div className={"crew-cheer mood-" + crewMood} aria-hidden="true">
-          <span className="crew-face" aria-hidden="true">{crew.face}</span>
+          <span className={"crew-face crew-" + stage.id} aria-hidden="true" />
           <span><small>{crew.name}</small><strong>{crewMessage}</strong></span>
         </div>
         <div className="run-mission-strip" aria-label="3つの おねがい">
@@ -630,7 +630,7 @@ export function GameScreen({
           data-game-input="true"
           data-testid="beat-pad"
         >
-          <span><i aria-hidden="true">👆</i> おす！</span>
+          <span><i aria-hidden="true" /> おす！</span>
           <small>タップ / ながおし</small>
         </button>
         <button
