@@ -1,0 +1,249 @@
+/* Expedition edition: cinematic scenery, a calm instrument panel, one clear beat. */
+:root { --night: #081b25; --surface: #102b36; --edge: #34515b; --gold: #ffd17a; --mint: #85eed6; }
+body, .app-shell, .app-main { background: var(--night); }
+.expedition-title { position: relative; display: grid; grid-template-rows: 1fr auto auto; min-height: 100svh; overflow: hidden; background: var(--night); color: #f3f7f5; }
+.expedition-title .attract-canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .88; }
+.expedition-title .title-vignette { background: linear-gradient(90deg, #061923ee, #06192322 75%), linear-gradient(0deg, #081b25 0%, transparent 70%); }
+.expedition-title .title-copy { position: relative; z-index: 2; width: 100%; min-height: 0; padding: clamp(28px, 6vh, 72px) clamp(24px, 6vw, 88px) 32px; background: none; }
+.expedition-title .eyebrow { display: flex; gap: 10px; align-items: center; color: var(--mint); font-size: 14px; letter-spacing: .08em; }
+.status-light { width: 7px; height: 7px; display: inline-block; border-radius: 50%; background: var(--mint); box-shadow: 0 0 12px #85eed680; }
+.expedition-title h1 { font-size: clamp(38px, 5.8vw, 78px); letter-spacing: -.05em; line-height: 1.18; margin: 20px 0; color: #fff; text-shadow: 0 4px 32px #0008; }
+.expedition-title h1 span { display: block; }
+.expedition-title .title-subtitle { font-size: clamp(16px, 1.6vw, 21px); color: #c4dadf; margin: 0 0 26px; }
+.expedition-title .title-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.expedition-title .primary-command { background: var(--gold); border: 1px solid #ffe5b6; border-radius: 12px; color: #15252d; box-shadow: 0 5px 0 #986d33, 0 12px 28px #0005; font-size: 20px; min-height: 66px; }
+.expedition-title .secondary-command { color: #e8f6f5; background: #0b273bcc; border: 1px solid #74989b; border-radius: 12px; box-shadow: none; min-height: 56px; }
+.expedition-title .kid-first-guide { border: 0; padding: 12px 0; box-shadow: none; background: none; color: #bbd2d6; font-size: 14px; margin: 14px 0 0; }
+.departure-board { z-index: 3; position: relative; margin: 0 clamp(20px, 5vw, 72px); background: #0b222de8; border: 1px solid #5e858b66; border-radius: 16px; padding: 20px 24px 12px; backdrop-filter: blur(14px); }
+.departure-board header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; color: #d3e6e5; font-weight: 800; }
+.departure-board header > span:last-child { color: var(--gold); }
+.departure-board small { font-size: 13px; font-weight: 500; }
+.departure-routes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.departure-route { padding: 0; text-align: left; display: grid; grid-template-columns: 90px 1fr 18px; gap: 14px; align-items: center; color: #f5f8f6; background: #16333f; border: 1px solid #466772; border-radius: 10px; overflow: hidden; cursor: pointer; transition: background .15s, transform .15s; min-height: 106px; }
+.departure-route:hover { background: #234958; transform: translateY(-3px); }
+.route-thumbnail { display: block; height: 100%; min-height: 106px; background-size: cover; background-position: center; background-color: #345963; }
+.route-jungle .route-thumbnail { background-color: #294d39; }
+.route-moon .route-thumbnail { background-color: #25335d; }
+.departure-route strong, .departure-route em { display: block; }
+.departure-route strong { font-size: 19px; margin: 4px 0; }
+.departure-route small { color: #a9c4ca; }
+.departure-route em { font-size: 12px; color: #9bdcc9; font-style: normal; }
+.departure-route > i { font-size: 20px; color: var(--gold); font-style: normal; }
+.departure-board footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; color: #a9c4ca; font-size: 13px; }
+.departure-board .ticket-stamps { gap: 6px; }
+.departure-board .ticket-stamps i { width: 26px; height: 26px; font-size: 15px; border-color: #577581; color: #88a9ae; background: #15303d; }
+.departure-board .ticket-stamps i.is-filled { color: var(--gold); background: #364641; }
+.expedition-title .title-utility { position: relative; bottom: auto; right: auto; left: auto; display: flex; z-index: 3; justify-content: center; gap: 24px; padding: 20px; }
+.expedition-title .title-utility button { color: #bfd1d4; font-size: 14px; min-height: 40px; }
+@media(max-width: 760px) {
+ .expedition-title .title-copy { padding: 32px 24px 22px; }
+ .expedition-title h1 { font-size: clamp(34px, 7vw, 54px); }
+ .departure-board { padding: 16px; margin: 0 16px; }
+ .departure-routes { gap: 8px; }
+ .departure-route { grid-template-columns: 1fr; gap: 0; min-height: 0; }
+ .route-thumbnail { height: 80px; min-height: 0; }
+ .departure-route > span:nth-child(2) { padding: 10px; }
+ .departure-route strong { font-size: 16px; }
+ .departure-route em, .departure-route > i { display: none; }
+}
+@media(orientation: landscape) and (max-height: 700px) {
+ .expedition-title .title-copy { padding: 22px 5vw 16px; }
+ .expedition-title h1 { font-size: 40px; margin: 12px 0; }
+ .expedition-title h1 span { display: inline; }
+ .expedition-title .title-subtitle { margin-bottom: 16px; }
+ .expedition-title .kid-first-guide { margin: 8px 0 0; padding: 0; }
+ .departure-board { padding: 12px 16px; }
+ .departure-board header { margin-bottom: 8px; }
+ .departure-route { grid-template-columns: 64px 1fr; min-height: 75px; }
+ .route-thumbnail { min-height: 75px; }
+ .departure-route > i, .departure-route em { display: none; }
+ .expedition-title .title-utility { padding: 4px 20px; }
+}
+@media(prefers-reduced-motion: reduce) { .departure-route { transition: none; } }
+
+/* The beat stays on a fixed horizontal lane on every device. */
+.expedition-game { grid-template-rows: calc(76px + env(safe-area-inset-top)) minmax(280px, 1fr) 108px calc(24px + env(safe-area-inset-bottom)); background: #071923; }
+.expedition-game .game-hud { background: #0c2430; border-bottom: 1px solid #52717b; box-shadow: none; grid-template-columns: minmax(150px, 1fr) minmax(180px, 1.3fr) auto 44px; gap: 20px; }
+.expedition-game .hud-route > span { font-size: 13px; color: #9ebbc6; }
+.expedition-game .hud-route > strong { font-size: 17px; }
+.expedition-game .hud-route strong i { display: none; }
+.expedition-game .hud-progress-cluster { display: flex; gap: 12px; align-items: center; }
+.expedition-game .hud-progress-cluster > span { color: #a6c4c9; font-size: 13px; white-space: nowrap; }
+.expedition-game .hud-progress { flex: 1; height: 7px; border: 0; background: #2a4856; box-shadow: none; overflow: visible; }
+.expedition-game .hud-progress i { background: var(--mint); border-radius: 8px; box-shadow: none; }
+.expedition-game .hud-progress b { display: none; }
+.expedition-game .hud-score { background: none; border: none; padding: 0; gap: 20px; }
+.expedition-game .hud-score span { font-size: 12px; color: #a6c4c9; }
+.expedition-game .hud-score span strong { font-size: 22px; font-variant-numeric: tabular-nums; color: #eef8f4; }
+.expedition-game .hud-score span:nth-child(2) strong { color: var(--gold); }
+.expedition-game .hud-score span:last-child { display: none; }
+.expedition-game .pause-button { border: 1px solid #6b8792; background: #17333f; border-radius: 10px; color: #ebf4f4; box-shadow: none; }
+.expedition-game .game-stage { background: #071923; }
+.expedition-game .game-stage::after { display: none; }
+.scenery-caption { position: absolute; top: 22px; left: 24px; max-width: 44%; color: #fff; text-shadow: 0 2px 10px #000; }
+.scenery-caption small { display: block; font-size: 12px; letter-spacing: .1em; color: #c7e0e2; }
+.scenery-caption strong { display: block; font-size: clamp(16px, 2vw, 25px); margin-top: 4px; }
+.expedition-game .run-mission-strip { top: 20px; right: 24px; left: auto; width: auto; max-width: 50%; transform: none; gap: 6px; }
+.expedition-game .run-train-perk, .expedition-game .mission-pill > span { display: none; }
+.expedition-game .mission-pill { min-width: 48px; padding: 8px 10px; border: 1px solid #77929377; border-radius: 8px; background: #0a2437d9; gap: 6px; }
+.expedition-game .mission-pill strong { font-size: 13px; color: #eef8f3; }
+.expedition-game .mission-pill > i { color: var(--gold); }
+.expedition-game .mission-pill.is-complete { background: #254c43; border-color: #86eed7; }
+.discovery-count { position: absolute; right: 24px; top: 75px; color: #dcebea; background: #0a2437c9; font-size: 13px; padding: 6px 10px; border-radius: 6px; }
+.rhythm-encounter { position: absolute; top: 21%; right: 24px; width: min(380px, 47%); display: grid; grid-template-columns: 44px 1fr; gap: 8px 12px; background: #08202ee8; border: 1px solid #99dbd590; border-radius: 12px; padding: 14px; box-shadow: 0 12px 30px #0004; }
+.rhythm-encounter .encounter-character { width: 44px; height: 44px; font-size: 27px; border: 0; background: #244653; border-radius: 8px; box-shadow: none; filter: none; }
+.rhythm-encounter .encounter-copy { display: flex; flex-direction: column; gap: 4px; }
+.rhythm-encounter .encounter-copy small { color: var(--mint); font-size: 12px; }
+.rhythm-encounter .encounter-copy strong { color: #fff; font-size: 16px; }
+.rhythm-encounter .encounter-copy > span { color: #c4dade; font-size: 13px; }
+.encounter-beats { grid-column: 2; display: flex; gap: 8px; }
+.encounter-beats i { display: grid; place-items: center; font-style: normal; color: #a9c1cb; border: 1px solid #537985; border-radius: 50%; width: 26px; height: 26px; font-size: 16px; }
+.encounter-beats i.is-filled { color: #0c2833; background: var(--gold); border-color: var(--gold); }
+.expedition-game .encounter-celebration { top: 24%; bottom: auto; left: auto; right: 24px; transform: none; width: min(380px, 47%); padding: 16px; border: 1px solid #b2f4db; border-radius: 12px; color: #ecfff5; background: #174738ee; font-size: 17px; animation: none; }
+.expedition-game .encounter-celebration > i { display: none; }
+.expedition-game .encounter-celebration > span { font-size: 30px; }
+.expedition-game .encounter-celebration small { font-size: 12px; color: #b8e8d8; }
+.expedition-game .hit-feedback { top: 24%; bottom: auto; left: 20%; transform: translateX(-50%); max-width: 36%; padding: 5px 12px; border: 0; background: none; box-shadow: none; color: #fcfffc; text-align: center; text-shadow: 0 2px 14px #062232; animation: none; }
+.expedition-game .hit-feedback strong { font-size: clamp(18px, 2.6vw, 32px); }
+.expedition-game .hit-feedback small { color: #d1e7e9; font-size: 12px; }
+.expedition-game .judgement-perfect { color: #fff0b2; }
+.expedition-game .judgement-miss strong { font-size: 16px; color: #e3eef2; }
+.expedition-game .touch-controls { display: grid; grid-template-columns: 64px minmax(140px, 430px) 64px 120px; justify-content: center; align-items: center; gap: 16px; border-top: 1px solid #345765; background: #0b222e; box-shadow: none; padding: 12px max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left)); }
+.expedition-game .touch-controls.beat-only { grid-template-columns: minmax(200px, 540px) 120px; }
+.expedition-game .beat-pad { width: 100%; min-height: 76px; height: 76px; border: 1px solid #ffe9bb; border-radius: 14px; background: linear-gradient(180deg, #ffe1a1, #f8c168); color: #18323b; box-shadow: inset 0 -5px 0 #b27e3680, 0 4px 0 #020d14; }
+.expedition-game .beat-pad::after { display: none; }
+.expedition-game .beat-pad > span { font-size: 27px; }
+.expedition-game .beat-pad > span > i { display: none; }
+.expedition-game .beat-pad small { color: #41554e; font-size: 13px; }
+.expedition-game .beat-pad.cue-release { background: linear-gradient(180deg, #b9ffe2, #75dcc4); border-color: #def9e9; }
+.expedition-game .beat-pad.cue-rest { background: #aec3ce; border-color: #d8e4ea; }
+.expedition-game .direction-pad { width: 64px; height: 64px; background: #2a4157; color: #e9deff; border: 1px solid #918ab5; border-radius: 12px; font-size: 30px; box-shadow: inset 0 -4px 0 #162333, 0 4px 0 #020d14; }
+.expedition-game .beat-pad:active, .expedition-game .direction-pad:active { transform: translateY(3px); filter: brightness(1.13); box-shadow: inset 0 -1px 0 #80592760; }
+.drive-dock { height: 76px; }
+.expedition-game .drive-command { width: 100%; height: 76px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid #4a7881; background: #193442; color: #b7d0d8; border-radius: 12px; gap: 4px; box-shadow: none; }
+.expedition-game .drive-command span { font-size: 17px; }
+.expedition-game .drive-command small { font-size: 12px; }
+.drive-charge { width: 75%; height: 4px; border-radius: 4px; background: #061c27; display: block; overflow: hidden; }
+.drive-charge b { display: block; height: 100%; background: var(--mint); }
+.expedition-game .drive-command.is-ready { color: #062d2a; background: var(--mint); border-color: #d9fff0; box-shadow: 0 0 25px #61edbe44; animation: none; }
+.expedition-game .drive-command.is-active { color: #c4ffe8; border-color: #99eed4; background: #235446; }
+.expedition-game .keyboard-hint { background: #071923; color: #7596a4; font-size: 12px; }
+.expedition-game .countdown-overlay { background: #0519249c; backdrop-filter: none; }
+.expedition-game .countdown-overlay span { border: 1px solid #adccc7; border-radius: 24px; color: var(--gold); background: #0a293add; width: 110px; height: 110px; box-shadow: 0 15px 60px #0004; }
+.expedition-game .countdown-overlay small { font-size: 17px; color: #eaf9f4; }
+
+/* Route selection and the arrival ticket share the same expedition language. */
+.app-header { color: #e8f5f4; background: #0c2430; border-bottom: 1px solid #355763; }
+.panel-screen { color: #edf4f4; background: radial-gradient(ellipse at 75% 0, #214858, transparent 60%), #0b222e; }
+.screen-heading h1, .panel-screen h2, .calibration-content h1 { color: #f2f8f5; }
+.screen-heading p:not(.eyebrow), .screen-topline { color: #adc7cf; }
+.panel-screen .eyebrow { color: var(--mint); }
+.panel-screen .primary-command, .expedition-result .primary-command { background: var(--gold); border: 1px solid #ffe6b9; border-radius: 12px; color: #16303a; box-shadow: 0 4px 0 #946b32; }
+.panel-screen .secondary-command, .expedition-result .secondary-command { background: #1a3947; border: 1px solid #557a88; border-radius: 12px; color: #e0f3f4; box-shadow: none; }
+.panel-screen .back-button, .panel-screen .text-command { color: #bed9e0; }
+.stage-grid { gap: 22px; }
+.stage-card { color: #e9f5f5; background: #143441; border: 1px solid #527786; border-radius: 16px; box-shadow: 0 12px 32px #0003; overflow: hidden; }
+.stage-card .stage-scene { background-size: cover; background-position: center; height: 230px; border-radius: 0; }
+.stage-card .stage-copy { padding: 20px; }
+.stage-card .stage-copy strong { color: #f4f7f3; font-size: 24px; }
+.stage-card .stage-copy small, .stage-card .stage-copy > span { color: #b9d3d8; font-size: 14px; }
+.stage-card .stage-record { background: #0b2432; color: var(--gold); border-color: #395e6d; }
+.stage-card .stage-record small { color: #9cbfc9; }
+.journey-ticket-strip { background: #173746; color: #d1e7e7; border: 1px solid #436a77; border-radius: 12px; box-shadow: none; }
+.journey-ticket-strip small { color: #a8cbd5; }
+.route-preview { display: flex; flex-direction: column; justify-content: flex-end; gap: 8px; padding: 24px; margin: 12px auto 26px; min-height: 210px; border: 1px solid #537580; border-radius: 16px; background-size: cover; background-position: center; box-shadow: inset 0 -130px 100px -70px #051725; text-shadow: 0 2px 8px #051725; }
+.route-preview > span { font-size: 13px; color: #c2e8e9; }
+.route-preview strong { font-size: 30px; color: #fff; }
+.route-preview small { font-size: 14px; color: #e0eeee; }
+.choice-screen .journey-steps { display: none; }
+.difficulty-choice button { background: #163b4b; border: 1px solid #537e8d; border-radius: 12px; color: #d8ecec; box-shadow: none; padding: 18px; }
+.difficulty-choice button strong { color: #f2f7f3; font-size: 22px; }
+.difficulty-choice button small { color: #aacbd3; font-size: 14px; }
+.difficulty-choice button.is-selected { background: #255044; border: 2px solid #93ebcb; box-shadow: 0 0 0 3px #85eed619; }
+.choice-screen .dispatch-start-command { margin: 24px auto; }
+.dispatch-details, .result-details { border: 1px solid #456774; border-radius: 12px; background: #102e3c; margin: 22px 0; padding: 0 20px 16px; color: #d6e6eb; }
+.dispatch-details:not([open]), .result-details:not([open]) { padding-bottom: 0; }
+.dispatch-details > summary, .result-details > summary { cursor: pointer; padding: 18px 0; font-size: 16px; font-weight: 700; }
+.dispatch-details .dispatch-board { color: #1c3646; }
+.note-legend { color: #b1ced5; font-size: 14px; }
+.settings-list { color: #234353; }
+.settings-list .setting-row, .settings-list .toggle-row { border-radius: 12px; }
+.collection-section, .collection-item, .tutorial-practice, .train-card { color: #213e4c; }
+.parents-content dl { color: #173f51; }
+.parents-content > div > p { color: #bbd7de; }
+.expedition-result { color: #e7f4f4; background: #081b25; padding: 0 0 36px; }
+.expedition-result .arrival-banner { background-size: cover; background-position: center; padding: 40px 20px 50px; min-height: 250px; border: 0; }
+.expedition-result .arrival-banner > p { color: var(--mint); font-size: 18px; }
+.expedition-result .arrival-banner h1 { color: #fff; font-size: clamp(28px, 4vw, 44px); text-shadow: 0 3px 18px #0008; }
+.expedition-result .arrival-banner > span { color: #c8e0e4; }
+.expedition-result .result-body { position: relative; width: min(860px, calc(100% - 32px)); margin: -16px auto 0; background: none; padding: 0; display: flex; flex-direction: column; }
+.expedition-result .result-grade { order: -3; color: #e9f5f1; padding: 16px; background: none; border: 0; box-shadow: none; }
+.expedition-result .result-grade .result-stars { color: var(--gold); }
+.expedition-result .result-grade small { color: #a4c4ca; }
+.arrival-highlights { order: -2; display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; background: #112f3c; border: 1px solid #436575; border-radius: 14px; padding: 20px 10px; }
+.arrival-highlights span + span { border-left: 1px solid #416170; }
+.arrival-highlights small { display: block; color: #a6c8d0; font-size: 14px; }
+.arrival-highlights strong { display: block; margin-top: 8px; color: var(--gold); font-size: clamp(25px, 4vw, 38px); }
+.arrival-highlights em { font-style: normal; font-size: 14px; color: #bfd4d8; margin-left: 4px; }
+.expedition-result .result-actions { order: -1; justify-content: center; margin: 22px 0; }
+.expedition-result .ticket-reward-card { background: #1b3a46; border: 1px solid #63838b; border-radius: 14px; box-shadow: none; color: #dfedea; }
+.expedition-result .ticket-reward-card header { color: #d7efea; }
+.expedition-result .ticket-reward-card > p { color: #b4d1d7; }
+.expedition-result .result-metrics article { background: #1a3a4a; border-color: #4c7180; color: #d6e8ec; }
+.expedition-result .result-metrics article strong { color: #edfffa; }
+.expedition-result .result-mission-board { color: #153444; }
+.expedition-result .result-drive-summary, .expedition-result .result-recommendation { color: #244756; }
+.expedition-result .timing-tendency { color: #b2d1db; }
+.result-map-link { color: #b4d8de; margin: 18px auto; }
+
+@media(max-width: 760px) {
+ .expedition-game { grid-template-rows: calc(70px + env(safe-area-inset-top)) minmax(240px, 1fr) 102px calc(22px + env(safe-area-inset-bottom)); }
+ .expedition-game .game-hud { grid-template-columns: 1fr auto 42px; gap: 12px; padding-inline: 14px; }
+ .expedition-game .hud-progress-cluster { display: none; }
+ .expedition-game .hud-score { gap: 12px; }
+ .expedition-game .hud-score span:nth-child(2) { display: flex; }
+ .expedition-game .hud-score span strong { font-size: 19px; }
+ .expedition-game .hud-route strong { font-size: 15px; }
+ .expedition-game .touch-controls { gap: 9px; grid-template-columns: 45px minmax(95px, 1fr) 45px 78px; padding-inline: 10px; }
+ .expedition-game .touch-controls.beat-only { grid-template-columns: minmax(180px, 1fr) 90px; }
+ .expedition-game .direction-pad { width: 45px; height: 60px; }
+ .expedition-game .beat-pad > span { font-size: 23px; }
+ .expedition-game .beat-pad small { font-size: 12px; }
+ .expedition-game .drive-command span { font-size: 14px; }
+ .scenery-caption { left: 16px; top: 16px; }
+ .expedition-game .run-mission-strip { top: 14px; right: 14px; }
+ .expedition-game .mission-pill { padding: 6px; min-width: 35px; }
+ .expedition-game .mission-pill strong { font-size: 12px; }
+ .discovery-count { right: 14px; top: 59px; }
+ .rhythm-encounter { top: 19%; right: 12px; width: 49%; padding: 10px; grid-template-columns: 1fr; gap: 6px; }
+ .rhythm-encounter .encounter-character { display: none; }
+ .rhythm-encounter .encounter-copy strong { font-size: 14px; }
+ .encounter-beats { grid-column: 1; }
+ .expedition-game .encounter-celebration { right: 12px; font-size: 14px; padding: 12px; }
+ .expedition-game .hit-feedback { left: 22%; top: 25%; max-width: 42%; }
+ .stage-card .stage-scene { height: 170px; }
+ .route-preview { min-height: 160px; padding: 20px; }
+ .route-preview strong { font-size: 25px; }
+ .difficulty-choice button { padding: 14px 8px; }
+ .difficulty-choice button strong { font-size: 18px; }
+ .difficulty-choice button small { font-size: 13px; }
+ .expedition-result .result-actions { flex-direction: column-reverse; }
+ .expedition-result .result-actions button { width: 100%; }
+}
+@media(orientation: landscape) and (max-height: 600px) {
+ .expedition-game { grid-template-rows: calc(55px + env(safe-area-inset-top)) minmax(200px, 1fr) 80px 18px; }
+ .expedition-game .game-hud { padding-block: 5px; }
+ .expedition-game .touch-controls { padding-block: 8px; }
+ .expedition-game .beat-pad, .expedition-game .drive-command, .drive-dock { height: 60px; min-height: 60px; }
+ .expedition-game .direction-pad { height: 50px; }
+ .expedition-game .beat-pad > span { font-size: 22px; }
+ .scenery-caption { top: 10px; }
+ .scenery-caption strong { font-size: 16px; }
+ .expedition-game .run-mission-strip { top: 10px; }
+ .discovery-count { top: 50px; }
+ .rhythm-encounter { top: 24%; padding: 8px 10px; }
+ .rhythm-encounter .encounter-copy > span { font-size: 12px; }
+ .expedition-game .hit-feedback { top: 23%; }
+ .expedition-game .hit-feedback strong { font-size: 20px; }
+}
+.expedition-game.reduce-motion *, .expedition-game.reduce-motion *::before, .expedition-game.reduce-motion *::after { animation: none !important; transition: none !important; }

@@ -36,9 +36,12 @@ test("server-renders the complete rhythm game shell and social metadata", async 
   assert.match(html, /<html[^>]*\blang=["']ja["'][^>]*>/i);
   assert.match(html, /<title>リズム・エクスプレス<\/title>/i);
   assert.match(html, /リズム・エクスプレス/);
-  assert.match(html, /おんがくで 3つの せかいを はしろう！/);
-  assert.match(html, /わくわく きっぷ/);
-  assert.match(html, /わくわく きっぷ、あと3かいで シール/);
+  assert.match(html, /data-testid="start-adventure"/);
+  assert.match(html, /いきさきを えらぶ/);
+  assert.match(html, /おみやげシールまで あと/);
+  for (const theme of ["city", "jungle", "moon"]) {
+    assert.match(html, new RegExp(`route-${theme}\\.jpg`));
+  }
   assert.match(
     html,
     /<meta(?=[^>]*\bname=["']viewport["'])(?=[^>]*\bcontent=["'][^"']*viewport-fit=cover[^"']*["'])[^>]*>/i,

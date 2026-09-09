@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { GameCanvas } from "./GameCanvas";
+import { GameCanvas } from "./ExpeditionCanvas";
+import { getRhythmCue } from "../game/rhythmCue";
 import { AudioEngine } from "../game/engines/AudioEngine";
 import { getTrain } from "../game/data/trains";
 import { DIFFICULTIES } from "../game/engines/JudgementEngine";
@@ -12,6 +13,8 @@ import { getRunGoalProgress, getRunGoals } from "../game/runGoals";
 import {
   getActiveAdventureEncounter,
   getAdventureEncounters,
+  ENCOUNTER_TARGET,
+  isEncounterRhythmHit,
   type AdventureEncounter,
 } from "../game/adventureEvents";
 import type {
@@ -96,6 +99,9 @@ export function GameScreen({
   const [activeEncounter, setActiveEncounter] = useState<AdventureEncounter | null>(null);
   const [encounterSuccess, setEncounterSuccess] = useState<AdventureEncounter | null>(null);
   const [completedEncounters, setCompletedEncounters] = useState(0);
+  const [encounterHits, setEncounterHits] = useState(0);
+  const encounterHitsRef = useRef(0);
+  const lastUiFrame = useRef(0);
   const [systemReducedMotion, setSystemReducedMotion] = useState(false);
   const completedRef = useRef(false);
   const pausedRef = useRef(false);
@@ -148,6 +154,12 @@ export function GameScreen({
   const handleInput = useCallback((action: GameAction, isDown: boolean, eventTimeMs = performance.now()) => {
     if (!startedRef.current || pausedRef.current || completedRef.current) return;
     const result = session.input(action, isDown, audio.eventTimeToAudioTime(eventTimeMs));
+    const encounter = activeEncounterRef.current;
+    const now = session.playhead(audio.now());
+    if (encounter && now >= encounter.startTime && now < encounter.startTime + encounter.duration && isEncounterRhythmHit(result)) {
+      encounterHitsRef.current = Math.min(ENCOUNTER_TARGET, encounterHitsRef.current + 1);
+      setEncounterHits(encounterHitsRef.current);
+    }
     showFeedback(result);
     setScore(session.stats.score);
     setCombo(session.stats.combo);
@@ -255,7 +267,7 @@ export function GameScreen({
         }
         const audioNow = audio.now();
         const current = session.playhead(audioNow);
-        setPlayhead(current);
+        const refreshUi = time - lastUiFrame.current >= 1000 / 30;
         const nextEncounter = getActiveAdventureEncounter(
           encounters,
           current,
@@ -263,6 +275,8 @@ export function GameScreen({
         );
         if (nextEncounter && activeEncounterRef.current?.id !== nextEncounter.id) {
           activeEncounterRef.current = nextEncounter;
+          encounterHitsRef.current = 0;
+          setEncounterHits(0);
           setActiveEncounter(nextEncounter);
         } else if (
           !nextEncounter
@@ -275,12 +289,16 @@ export function GameScreen({
         }
         const automaticFeedback = session.update(audioNow);
         if (automaticFeedback.length) showFeedback(automaticFeedback[automaticFeedback.length - 1]);
-        setScore(session.stats.score);
-        setCombo(session.stats.combo);
         const nextEffects = effectsManager.tick(delta);
         session.setDriveActive(nextEffects.overdrive);
         audio.setDrive(nextEffects.overdrive);
-        setEffects(nextEffects);
+        if (refreshUi) {
+          setPlayhead(current);
+          setScore(session.stats.score);
+          setCombo(session.stats.combo);
+          setEffects(nextEffects);
+          lastUiFrame.current = time;
+        }
         if (session.isComplete(current)) {
           completedRef.current = true;
           audio.stop();
@@ -376,6 +394,10 @@ export function GameScreen({
   }, [effectsManager, session, showFeedback]);
 
   useEffect(() => {
+    if (encounterHits >= ENCOUNTER_TARGET) completeAdventureEncounter();
+  }, [encounterHits, completeAdventureEncounter]);
+
+  useEffect(() => {
     const onPauseShortcut = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target?.closest("input, select, textarea")) return;
@@ -446,36 +468,11 @@ export function GameScreen({
   const scaledPulse = reducedMotion ? 0 : Math.max(musicPulse, effects.pulse * settings.effectsStrength);
   const goalProgress = getRunGoalProgress(goals, session.stats);
   const flowMultiplier = session.flowMultiplier;
-  const crew = {
-    city: { name: "しゃしょう ミナモ" },
-    jungle: { name: "リズムたい トト" },
-    moon: { name: "ほしよみ ルクス" },
-  }[stage.id];
-  const crewMood = activeEncounter || encounterSuccess
-    ? "excited"
-    : feedback?.judgement === "miss"
-      ? "encourage"
-      : feedback?.judgement === "perfect" || effects.driveReady
-        ? "excited"
-        : "ready";
-  const crewMessage = countdown > 0
-    ? "おとを きいて、しゅっぱつ！"
-    : encounterSuccess
-      ? encounterSuccess.successMessage
-      : activeEncounter
-        ? activeEncounter.actionLabel + "をタップ！"
-        : feedback?.judgement === "miss"
-          ? "だいじょうぶ！ つぎの おとへ！"
-          : feedback?.judgement === "perfect"
-            ? "どまんなか！ すごい！"
-            : effects.driveReady
-              ? "パワーいっぱい！ スーパーそうこう！"
-              : combo >= 8
-                ? `${combo}コンボ！ そのちょうし！`
-                : "ひかりが かさなったら おす！";
+  const cue = getRhythmCue(session.chart.visible(playhead, DIFFICULTIES[difficulty].travelTime), playhead);
+  const nextEvent = [...stage.events].reverse().find(event => event.time <= playhead);
 
   return (
-    <main className={"game-screen game-" + stage.theme + (effects.overdrive ? " is-flow-drive" : "")} data-testid="game-screen">
+    <main className={"game-screen expedition-game game-" + stage.theme + (effects.overdrive ? " is-flow-drive" : "") + (reducedMotion ? " reduce-motion" : "")} data-testid="game-screen">
       <div className="game-hud" inert={paused}>
         <div className="hud-route">
           <span>{stage.name}</span>
@@ -487,7 +484,7 @@ export function GameScreen({
             <i style={{ width: progressPercent + "%" }} />
             <b style={{ left: `calc(${progressPercent}% - 6px)` }} aria-hidden="true" />
           </div>
-          <span>{progressPercent}%</span>
+          <span>あと {Math.max(0, Math.ceil(stage.duration - Math.max(0, playhead)))}びょう</span>
         </div>
         <div className={"hud-score" + (combo >= 5 ? " has-combo" : "")}>
           <span>てんすう <strong>{score.toLocaleString()}</strong></span>
@@ -509,10 +506,7 @@ export function GameScreen({
           routeLane={routeLane}
           trainColor={trainColor}
         />
-        <div className={"crew-cheer mood-" + crewMood} aria-hidden="true">
-          <span className={"crew-face crew-" + stage.id} aria-hidden="true" />
-          <span><small>{crew.name}</small><strong>{crewMessage}</strong></span>
-        </div>
+        <div className="scenery-caption"><small>0{stage.order} / {stage.shortName}</small><strong>{nextEvent?.target ?? "まもなく しゅっぱつ"}</strong></div>
         <div className="run-mission-strip" aria-label="3つの おねがい">
           <span className="run-train-perk">{selectedTrain.perkShort}</span>
           {goalProgress.map((goal) => (
@@ -524,27 +518,18 @@ export function GameScreen({
             </span>
           ))}
         </div>
-        {!activeEncounter && (
-          <div className="adventure-progress" aria-label={"サプライズ " + completedEncounters + " / " + encounters.length}>
-            <span aria-hidden="true">✨</span>
-            <small>サプライズ</small>
-            <strong>{completedEncounters}/{encounters.length}</strong>
-          </div>
-        )}
+        {!activeEncounter && !encounterSuccess && <div className="discovery-count">みつけた ★ {completedEncounters}/{encounters.length}</div>}
         {activeEncounter && (
-          <section className={"adventure-encounter encounter-" + stage.id} aria-live="polite">
+          <section className={"rhythm-encounter encounter-" + stage.id} aria-live="polite">
             <div className="encounter-character" aria-hidden="true">{activeEncounter.icon}</div>
             <div className="encounter-copy">
-              <small>サプライズ {completedEncounters + 1}/{encounters.length}</small>
+              <small>リズムで おてつだい</small>
               <strong>{activeEncounter.title}</strong>
-              <span>{activeEncounter.prompt}</span>
+              <span>いつもの ボタンで {ENCOUNTER_TARGET}かい あわせよう</span>
             </div>
-            <button type="button" onClick={completeAdventureEncounter} aria-label={activeEncounter.actionLabel}>
-              <span aria-hidden="true">{activeEncounter.actionIcon}</span>
-              <strong>{activeEncounter.actionLabel}</strong>
-              <small>タップ！</small>
-            </button>
-            <p>できなくても へっちゃら。できたら +750</p>
+            <div className="encounter-beats" aria-label={`${encounterHits}/${ENCOUNTER_TARGET}`}>
+              {Array.from({ length: ENCOUNTER_TARGET }, (_, i) => <i key={i} className={i < encounterHits ? "is-filled" : ""} aria-hidden="true">{i < encounterHits ? "★" : "○"}</i>)}
+            </div>
           </section>
         )}
         {encounterSuccess && (
@@ -556,7 +541,7 @@ export function GameScreen({
           </div>
         )}
         {feedback && (
-          <div className={"hit-feedback judgement-" + (feedback.judgement ?? "hint")} aria-live="polite">
+          <div className={"hit-feedback judgement-" + (feedback.judgement ?? "hint")}>
             <strong>{feedback.label}</strong>
             {feedback.deltaMs !== undefined && feedback.judgement !== "miss" && (
               <small>{feedback.deltaMs < -12 ? "すこし はやめ" : feedback.deltaMs > 12 ? "すこし おそめ" : "まんなか"}</small>
@@ -569,23 +554,6 @@ export function GameScreen({
             <small>あと {countdown} はく。おとを きいて じゅんび！</small>
           </div>
         )}
-        <div className="energy-meter" aria-label={"ビートパワー " + Math.round(effects.energy)}>
-          <span className="energy-meter-head">
-            <span>{effects.overdrive ? "スーパーそうこう" : "ビートパワー"}</span>
-            <strong>{effects.overdrive ? `${effects.overdriveRemaining.toFixed(1)}びょう` : `${Math.round(effects.energy)}%`}</strong>
-          </span>
-          <i><b style={{ width: effects.energy + "%" }} /></i>
-          <button
-            className={"drive-command" + (effects.driveReady ? " is-ready" : "") + (effects.overdrive ? " is-active" : "")}
-            type="button"
-            onClick={activateDrive}
-            disabled={!effects.driveReady}
-            aria-label="パワーが 80に なったら おせるよ。8びょう てんすう2ばい"
-          >
-            <span>{effects.overdrive ? "そうこうちゅう" : effects.driveReady ? "スーパーそうこう" : `あと${Math.max(0, Math.ceil(80 - effects.energy))}`}</span>
-            <small>{effects.overdrive ? "てんすう ×2" : effects.driveReady ? "ここを おす！" : "パワー"}</small>
-          </button>
-        </div>
       </div>
 
       <p id="beat-timing-help" className="sr-only">
@@ -612,7 +580,7 @@ export function GameScreen({
         </button>
         <button
           type="button"
-          className="beat-pad"
+          className={"beat-pad cue-" + cue.mode}
           style={{ "--beat-pulse": scaledPulse } as React.CSSProperties}
           onPointerDown={(event) => beginPointerInput("tap", event)}
           onPointerUp={(event) => endPointerInput("tap", event)}
@@ -630,8 +598,8 @@ export function GameScreen({
           data-game-input="true"
           data-testid="beat-pad"
         >
-          <span><i aria-hidden="true" /> おす！</span>
-          <small>タップ / ながおし</small>
+          <span><i aria-hidden="true" /> {cue.action}</span>
+          <small>{cue.mode === "release" ? "おわりの ○で はなそう" : "ひかりが ○に きたら"}</small>
         </button>
         <button
           type="button"
@@ -651,6 +619,13 @@ export function GameScreen({
         >
           →
         </button>
+        <div className="drive-dock">
+          <button className={"drive-command" + (effects.driveReady ? " is-ready" : "") + (effects.overdrive ? " is-active" : "")} type="button" onClick={activateDrive} disabled={!effects.driveReady}>
+            <span>{effects.overdrive ? "スーパー！" : effects.driveReady ? "スーパー！" : "パワー"}</span>
+            <small>{effects.overdrive ? `${Math.ceil(effects.overdriveRemaining)}びょう` : effects.driveReady ? "おして はっしん" : `${Math.round(effects.energy)}/80`}</small>
+            <i className="drive-charge"><b style={{ width: `${Math.min(100, effects.driveProgress * 100)}%` }} /></i>
+          </button>
+        </div>
       </div>
 
       <p className="keyboard-hint">

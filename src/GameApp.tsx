@@ -1,5 +1,6 @@
 "use client";
 
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GameScreen } from "./components/GameScreen";
 import {
@@ -91,8 +92,8 @@ export default function GameApp() {
     const firstStage = getStage("city");
     setSelectedStage("city");
     setDifficulty("easy");
-    if (!progress.seenTutorial || progress.selectedTrain !== "sunrise") {
-      saveProgress({ ...progress, seenTutorial: true, selectedTrain: "sunrise" });
+    if (!progress.seenTutorial) {
+      saveProgress({ ...progress, seenTutorial: true });
     }
     await launchGame(firstStage, "easy");
   };
@@ -232,6 +233,7 @@ export default function GameApp() {
         <TitleScreen
           progress={progress}
           onStart={startJourney}
+          onSelectStage={chooseStage}
           onTutorial={() => setScreen("tutorial")}
           onCollection={() => {
             setCollectionReturnScreen("title");
@@ -301,6 +303,11 @@ export default function GameApp() {
           journeyReward={lastJourneyReward}
           onRetry={() => void launchGame()}
           onMap={() => setScreen("world")}
+          onNext={() => {
+            const next = STAGES.find(item => item.order === stage.order + 1);
+            if (next) chooseStage(next.id);
+            else setScreen("world");
+          }}
         />
       )}
 

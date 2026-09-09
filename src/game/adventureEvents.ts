@@ -1,4 +1,10 @@
-import type { StageDefinition, StageTheme } from "./types.ts";
+import type { HitFeedback, StageDefinition, StageTheme } from "./types.ts";
+
+export const ENCOUNTER_TARGET = 3;
+export function isEncounterRhythmHit(feedback: HitFeedback | null): boolean {
+  return !!feedback?.noteType && feedback.deltaMs !== undefined
+    && (feedback.judgement === "perfect" || feedback.judgement === "great" || feedback.judgement === "good");
+}
 
 export interface AdventureEncounter {
   id: string;
@@ -132,7 +138,7 @@ export function getAdventureEncounters(
     id: stage.id + "-" + blueprint.key,
     stage: stage.id,
     startTime: Number((stage.duration * blueprint.progress).toFixed(2)),
-    duration: 5,
+    duration: 8,
     icon: blueprint.icon,
     actionIcon: blueprint.actionIcon,
     title: blueprint.title,

@@ -215,7 +215,8 @@ export class GameSession {
     }
     booster.boosterHitSlots.push(slot);
     booster.tapCount = booster.boosterHitSlots.length;
-    return { label: "ビート " + booster.tapCount + "/" + targetHits + "！", noteType: "booster", energyDelta: 1 };
+    const deltaMs = (now - slotTime) * 1000;
+    return { judgement: judgeTiming(deltaMs, this.difficulty), deltaMs, label: "ビート " + booster.tapCount + "/" + targetHits + "！", noteType: "booster", energyDelta: 1 };
   }
 
   private releaseBeam(now: number): HitFeedback | null {

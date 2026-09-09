@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AttractCanvas } from "./GameCanvas";
+import { AttractCanvas } from "./ExpeditionCanvas";
+import { routeArtwork } from "../game/presentation";
 import { STAGES } from "../game/data/stages";
 import { TRAIN_OPTIONS } from "../game/data/trains";
 import { DIFFICULTIES } from "../game/engines/JudgementEngine";
@@ -95,6 +96,7 @@ function TicketStamps({ filled }: { filled: number }) {
 interface TitleScreenProps {
   progress: ProgressData;
   onStart: () => void;
+  onSelectStage: (stage: StageTheme) => void;
   onTutorial: () => void;
   onCollection: () => void;
   onSettings: () => void;
@@ -104,6 +106,7 @@ interface TitleScreenProps {
 export function TitleScreen({
   progress,
   onStart,
+  onSelectStage,
   onTutorial,
   onCollection,
   onSettings,
@@ -112,34 +115,35 @@ export function TitleScreen({
   const ticketFilled = journeyTicketFilled(progress.journeyCount);
   const nextStickerIn = journeysUntilNextSticker(progress.journeyCount);
   return (
-    <main className="title-screen">
+    <main className="title-screen expedition-title">
       <AttractCanvas />
       <div className="title-vignette" aria-hidden="true" />
       <section className="title-copy">
-        <p className="eyebrow">🚂 しゅっぱつの じゅんび</p>
+        <p className="eyebrow"><span className="status-light" /> きみが うんてんし</p>
         <h1><span>リズム・</span><span>エクスプレス</span></h1>
-        <p className="title-subtitle">おんがくで 3つの せかいを はしろう！</p>
+        <p className="title-subtitle">おとに のって、まだ みぬ せかいへ。</p>
         <div className="title-actions">
           <button className="primary-command large-command" type="button" onClick={onStart} data-testid="start-adventure">
-            <span>しゅっぱつする</span><i aria-hidden="true">→</i>
+            <span>{progress.journeyCount ? "まちへ しゅっぱつ" : "はじめて はしる"}</span><i aria-hidden="true">→</i>
           </button>
           <button className="secondary-command" type="button" onClick={onTutorial}>
             あそびかた
           </button>
         </div>
-        <div className="kid-first-guide"><span aria-hidden="true">👆</span><strong>おおきな ボタンを おしてね</strong></div>
-        <div className="title-route-dots" aria-hidden="true"><i /><i /><i /></div>
-        <div className="title-progress-console" aria-label={`おほしさま ${totalMissionStars(progress)}/${MAX_MISSION_STARS}`}>
-          <span>おほしさま ツアー</span>
-          <strong>★ {totalMissionStars(progress)}<small> / {MAX_MISSION_STARS}</small></strong>
-          <i style={{ "--tour-progress": totalMissionStars(progress) / MAX_MISSION_STARS } as React.CSSProperties} />
-          <small>3つの おねがいを クリアして、おほしさまを あつめよう</small>
+        <div className="kid-first-guide"><span aria-hidden="true">♪</span><strong>ひかりが ○に きたら、おす！</strong></div>
+      </section>
+      <section className="departure-board" aria-label="いきさきを えらぶ">
+        <header><span>つぎの たびを えらぼう</span><span>★ {totalMissionStars(progress)}<small> / {MAX_MISSION_STARS}</small></span></header>
+        <div className="departure-routes">
+          {STAGES.map((route) => (
+            <button type="button" key={route.id} onClick={() => onSelectStage(route.id)} className={"departure-route route-" + route.id}>
+              <span className="route-thumbnail" style={{ backgroundImage: `url(${routeArtwork(route.id)})` }} aria-hidden="true" />
+              <span><small>0{route.order} · {Math.round(route.duration)}びょう</small><strong>{route.shortName}</strong><em>{progress.stationStamps.includes(route.id) ? "★ はしった コース" : "あたらしい けしき"}</em></span>
+              <i aria-hidden="true">↗</i>
+            </button>
+          ))}
         </div>
-        <div className="title-ticket-card" aria-label={`わくわく きっぷ、あと${nextStickerIn}かいで シール`}>
-          <span className="ticket-card-icon" aria-hidden="true">?</span>
-          <span><small>わくわく きっぷ</small><strong>あと {nextStickerIn} かいで ひみつシール！</strong></span>
-          <TicketStamps filled={ticketFilled} />
-        </div>
+        <footer><span>おみやげシールまで あと {nextStickerIn}かい</span><TicketStamps filled={ticketFilled} /></footer>
       </section>
       <nav className="title-utility" aria-label="そのほかのメニュー">
         <button type="button" onClick={onCollection}>シールずかん</button>
@@ -475,14 +479,7 @@ export function WorldScreen({ progress, onSelect, onCollection, onCalibration }:
               data-testid={"stage-" + stage.id}
             >
               <span className="stage-number">0{stage.order}</span>
-              <span className="stage-scene" aria-hidden="true">
-                <i className="scene-sky" />
-                <i className="scene-sun" />
-                <i className="scene-land" />
-                <i className="scene-landmark" />
-                <i className="scene-rail" />
-                <i className="scene-train" />
-              </span>
+              <span className="stage-scene" style={{ backgroundImage: `url(${routeArtwork(stage.id)})` }} aria-hidden="true" />
               <span className="stage-copy">
                 <strong>{stage.name}</strong>
                 <small>テンポ {stage.bpm}・やく {stage.duration}びょう</small>
@@ -533,6 +530,9 @@ export function DifficultyScreen({
         <span>{stage.name}</span>
         <span>テンポ {stage.bpm}</span>
       </div>
+      <div className="route-preview" style={{ backgroundImage: `url(${routeArtwork(stage.id)})` }}>
+        <span>0{stage.order} / {stage.shortName}</span><strong>{stage.destination}へ</strong><small>やく {Math.round(stage.duration)}びょうの たび</small>
+      </div>
       <nav className="journey-steps" aria-label="しゅっぱつまで">
         <span className="is-done"><i aria-hidden="true">✓</i>コース</span>
         <span className="is-current">おねがい</span>
@@ -558,12 +558,16 @@ export function DifficultyScreen({
               <span className="difficulty-bars" aria-hidden="true">
                 <i /><i /><i />
               </span>
-              <strong>{difficulty === "easy" ? "🐣 " : difficulty === "normal" ? "🚂 " : "🔥 "}{item.name}</strong>
+              <strong>{item.name}</strong>
               <small>{item.description}</small>
             </button>
           );
         })}
       </div>
+      <button className="primary-command large-command centered-command dispatch-start-command" type="button" onClick={onStart}>
+        この コースへ しゅっぱつ！ →
+      </button>
+      <details className="dispatch-details"><summary>れっしゃと おねがいを みる</summary>
       <section className="dispatch-board">
         <div className="mission-brief">
           <div className="dispatch-section-title"><span>3つの おねがい</span><strong>クリアした ★ {earnedStars}/3</strong></div>
@@ -599,6 +603,7 @@ export function DifficultyScreen({
           </div>
         </div>
       </section>
+      </details>
       <aside className="note-legend" aria-label="でてくる マーク">
         <span><i className="legend-spark" />タップ</span>
         <span><i className="legend-beam" />ながく おす</span>
@@ -606,9 +611,6 @@ export function DifficultyScreen({
         {stage.order >= 2 && <span><i className="legend-quiet" />まつ</span>}
         {stage.order >= 3 && selected !== "easy" && <span><i className="legend-switch" />ひだり・みぎ</span>}
       </aside>
-      <button className="primary-command large-command centered-command dispatch-start-command" type="button" onClick={onStart}>
-        🚂 この コースへ しゅっぱつ！
-      </button>
     </main>
   );
 }
@@ -867,7 +869,7 @@ export function ParentsScreen({ onBack }: { onBack: () => void }) {
           <div><dt>広告・課金なし</dt><dd>外部API、ログイン、広告、ガチャを使用しません</dd></div>
           <div><dt>端末内保存</dt><dd>進捗と設定は、このブラウザのlocalStorageだけに保存します</dd></div>
           <div><dt>やさしい表現</dt><dd>失敗を責めず、次のリズムへ意識を戻せる言葉を使います</dd></div>
-          <div><dt>走行中の発見</dt><dd>各路線に3つの短いサプライズがあります。見逃しても減点や取り逃しはありません</dd></div>
+          <div><dt>走行中の発見</dt><dd>各路線に3つの短いお手伝いがあります。いつものリズム操作を3回合わせると達成できます。見逃しても減点はありません</dd></div>
           <div><dt>休める区切り</dt><dd>3回遊ぶと「ひとやすみ駅」を表示します。連続記録や取り逃しはありません</dd></div>
         </dl>
       </section>
@@ -883,9 +885,10 @@ interface ResultScreenProps {
   journeyReward: JourneyReward;
   onRetry: () => void;
   onMap: () => void;
+  onNext: () => void;
 }
 
-export function ResultScreen({ stage, difficulty, result, unlocked, journeyReward, onRetry, onMap }: ResultScreenProps) {
+export function ResultScreen({ stage, difficulty, result, unlocked, journeyReward, onRetry, onMap, onNext }: ResultScreenProps) {
   const goals = getRunGoals(stage, difficulty);
   const rewardSticker = journeyReward.stickerId ? getSouvenirSticker(journeyReward.stickerId) : undefined;
   const grade = result.accuracy >= 96 && result.missionStars === 3 ? "S+" : result.accuracy >= 92 ? "S" : result.accuracy >= 82 ? "A" : result.accuracy >= 68 ? "B" : "C";
@@ -905,8 +908,8 @@ export function ResultScreen({ stage, difficulty, result, unlocked, journeyRewar
         ? `つぎは「${DIFFICULTIES[recommendedDifficulty].name}」にも ちょうせん できそう！`
         : `つぎは「${DIFFICULTIES[recommendedDifficulty].name}」で リズムを つかもう`;
   return (
-    <main className={"result-screen result-" + stage.theme} data-testid="result-screen">
-      <section className="arrival-banner">
+    <main className={"result-screen expedition-result result-" + stage.theme} data-testid="result-screen">
+      <section className="arrival-banner" style={{ backgroundImage: `linear-gradient(0deg, #081b25, #081b2520), url(${routeArtwork(stage.id)})` }}>
         <p>とうちゃく！</p>
         <h1>{stage.destination}</h1>
         <span>{result.message}</span>
@@ -933,6 +936,16 @@ export function ResultScreen({ stage, difficulty, result, unlocked, journeyRewar
           <span>{gradeLabel}</span>
           <small>リズム ランク {grade}</small>
         </div>
+        <div className="arrival-highlights">
+          <span><small>てんすう</small><strong>{result.score.toLocaleString()}</strong></span>
+          <span><small>つづけて できた</small><strong>{result.maxCombo}<em>かい</em></strong></span>
+          <span><small>おねがい クリア</small><strong>★ {result.missionStars}<em>/3</em></strong></span>
+        </div>
+        <div className="result-actions">
+          <button className="secondary-command" type="button" onClick={onRetry}>もう いちど はしる</button>
+          <button className="primary-command" type="button" onClick={onNext}>{stage.order < 3 ? "つぎの けしきへ →" : "ほかの コースへ →"}</button>
+        </div>
+        <details className="result-details"><summary>くわしい きろくを みる</summary>
         <div className="result-metrics">
           <article><span>ぴったりど</span><strong>{result.accuracy}%</strong></article>
           <article><span>いちばん ながく</span><strong>{result.maxCombo}</strong></article>
@@ -969,6 +982,7 @@ export function ResultScreen({ stage, difficulty, result, unlocked, journeyRewar
           <div><i style={{ width: result.earlyPercent + "%" }} /><b /><i style={{ width: result.latePercent + "%" }} /></div>
           <span>おそめ {result.latePercent}%</span>
         </div>
+        </details>
         {journeyReward.completedCard && (
           <aside className="rest-station">
             <span aria-hidden="true">☕</span>
@@ -981,10 +995,7 @@ export function ResultScreen({ stage, difficulty, result, unlocked, journeyRewar
             <span>{unlocked.join("・")}</span>
           </div>
         )}
-        <div className="result-actions">
-          <button className="secondary-command" type="button" onClick={onMap}>コースを えらぶ</button>
-          <button className="primary-command" type="button" onClick={onRetry}>もう いちど はしる</button>
-        </div>
+        <button className="text-command result-map-link" type="button" onClick={onMap}>コースの いちらんへ</button>
       </section>
     </main>
   );
