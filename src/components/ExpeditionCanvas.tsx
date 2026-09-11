@@ -9,15 +9,19 @@ import { observeMediaQuery, traceRoundedRect as rect } from "../game/browserComp
 import { noteScreenX, rhythmGeometry, routeArtwork } from "../game/presentation";
 import { getRhythmCue } from "../game/rhythmCue";
 import { beatPosition } from "../game/musicScore";
+import type { HitVisual } from "../game/hitFeedback";
+import { drawHitBursts } from "../game/hitBurstRenderer";
 
 interface GameCanvasProps {
   stage: StageDefinition; session: GameSession; getPlayhead: () => number; travelTime: number;
   effects: EffectsSnapshot; reducedMotion: boolean; effectsStrength: number; routeLane: number; trainColor: string;
+  getHitVisuals: (time: number) => readonly HitVisual[];
 }
 interface SceneState {
   stage: StageDefinition; playhead: number; notes: RuntimeNote[]; travelTime: number; energy: number;
   pulse: number; shake: number; driveActive: boolean; reducedMotion: boolean; effectsStrength: number;
   routeLane: number; trainColor: string; titleMode: boolean;
+  hits: readonly HitVisual[];
 }
 const artwork = new Map<StageTheme, HTMLImageElement>();
 function getArtwork(theme: StageTheme): HTMLImageElement | null {
@@ -152,9 +156,6 @@ function drawLane(c: CanvasRenderingContext2D, w: number, h: number, s: SceneSta
   }
   c.restore(); c.shadowColor = ring; c.shadowBlur = s.reducedMotion ? 0 : (due ? 20 : s.pulse * 14);
   c.strokeStyle = "#06141e"; c.lineWidth = 9; circle(c, tx, ty, r); c.stroke(); c.strokeStyle = ring; c.lineWidth = due ? 5 : 3; circle(c, tx, ty, r); c.stroke(); c.shadowBlur = 0;
-  if (s.pulse > .1 && s.shake < .1) {
-    c.globalAlpha = s.pulse * .5; c.strokeStyle = "#b9ffe1"; c.lineWidth = 2; circle(c, tx, ty, r + (s.reducedMotion ? 3 : (1 - s.pulse) * 21)); c.stroke(); c.globalAlpha = 1;
-  }
   if (cue.mode === "release") {
     c.strokeStyle = "#9fffe1"; c.lineWidth = 2;
     const held = s.notes.find(n => n.state === "holding");
@@ -172,7 +173,13 @@ function drawScene(c: CanvasRenderingContext2D, w: number, h: number, s: SceneSt
   const scale = s.titleMode ? Math.min(1.6, w / 720) : Math.max(.48, Math.min(1.4, w / 850));
   const trainX = s.titleMode ? w * .5 : w * .12 + s.energy / 100 * w * .05;
   drawExpress(c, trainX, railwayY - 9 + (s.reducedMotion ? 0 : s.routeLane * 5), scale, s, travel);
-  if (!s.titleMode) drawLane(c, w, h, s);
+  if (!s.titleMode) {
+    drawLane(c, w, h, s);
+    const { targetX, targetY, radius, laneTop } = rhythmGeometry(w, h);
+    c.save(); c.beginPath(); c.rect(0, laneTop + 2, w, h - laneTop - 18); c.clip();
+    drawHitBursts(c, targetX, targetY, radius, s.hits, s.playhead, s.reducedMotion, s.effectsStrength);
+    c.restore();
+  }
 }
 function useCanvasLoop(getState: () => SceneState) {
   const canvasRef = useRef<HTMLCanvasElement>(null), getStateRef = useRef(getState);
@@ -208,7 +215,7 @@ export function GameCanvas(props: GameCanvasProps) {
     return { stage: props.stage, playhead, travelTime: props.travelTime, notes: props.session.chart.visible(playhead, props.travelTime),
       energy: props.effects.energy, pulse: props.effects.pulse * props.effectsStrength, shake: props.effects.shake,
       driveActive: props.effects.overdrive, reducedMotion: props.reducedMotion, effectsStrength: props.effectsStrength,
-      routeLane: props.routeLane, trainColor: props.trainColor, titleMode: false };
+      routeLane: props.routeLane, trainColor: props.trainColor, titleMode: false, hits: props.getHitVisuals(playhead) };
   });
   return <canvas ref={canvasRef} className="game-canvas" aria-label={props.stage.name + "。みぎから くる ひかりが ○に かさなったら おそう"} />;
 }
@@ -218,7 +225,7 @@ export function AttractCanvas() {
   const canvasRef = useCanvasLoop(() => {
     const now = performance.now() / 1000; if (!started.current) started.current = now;
     return { stage: STAGES[0], playhead: now - started.current, notes: [], travelTime: 4, energy: 70, pulse: 0, shake: 0,
-      driveActive: false, reducedMotion: reduced.current, effectsStrength: 1, routeLane: 0, trainColor: "#d5a65f", titleMode: true };
+      driveActive: false, reducedMotion: reduced.current, effectsStrength: 1, routeLane: 0, trainColor: "#d5a65f", titleMode: true, hits: [] };
   });
   return <canvas ref={canvasRef} className="attract-canvas" aria-label="あさの うみべを はしる リズムれっしゃ" />;
 }

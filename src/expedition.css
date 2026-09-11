@@ -248,6 +248,54 @@ body, .app-shell, .app-main { background: var(--night); }
 }
 .expedition-game.reduce-motion *, .expedition-game.reduce-motion *::before, .expedition-game.reduce-motion *::after { animation: none !important; transition: none !important; }
 
+/* Judgement lives directly over the hit target, outside the incoming lane. */
+.hit-receipt { position: absolute; z-index: 4; pointer-events: none; left: max(68px, 21%); bottom: calc(34% + 32px); transform: translateX(-50%); width: clamp(130px, 30vw, 226px); padding: 11px 10px 9px; color: var(--hit-color); background: #081c2bef; border: 2px solid var(--hit-color); border-radius: 12px; text-align: center; box-shadow: 0 6px 20px #00101a66; animation: hit-stamp .18s ease-out both; }
+.hit-receipt-main { display: flex; justify-content: center; align-items: center; gap: 7px; }
+.hit-receipt-main > i { font-style: normal; font-size: clamp(26px, 3.4vw, 40px); font-weight: 900; line-height: 1; }
+.hit-receipt-main > strong { font-size: clamp(23px, 2.6vw, 30px); line-height: 1.1; letter-spacing: -.03em; white-space: nowrap; }
+.hit-receipt > small { display: block; font-size: 14px; line-height: 1.35; margin-top: 6px; color: #e5eff3; }
+.hit-receipt.hit-perfect { border-width: 3px; box-shadow: 0 0 22px #ffe08b30, 0 6px 20px #00101a66; }
+.hit-receipt.hit-good { border-style: dashed; }
+.hit-receipt.hit-miss { animation: hit-miss-stamp .16s ease-out both; }
+.hit-receipt.hit-empty { border: 1px solid #7895a6; box-shadow: none; }
+.hit-receipt.hit-empty .hit-receipt-main > i { display: none; }
+.hit-receipt.hit-empty .hit-receipt-main > strong { font-size: 21px; }
+.scenery-caption.behind-hit { visibility: hidden; }
+.hit-chain { display: block; width: fit-content; margin: 7px auto -17px; padding: 3px 12px; border-radius: 6px; color: #07202d; background: var(--hit-color); font-size: 14px; font-weight: 800; line-height: 1.2; box-shadow: 0 3px 9px #00101a55; }
+.hit-chain b { font-size: 22px; font-variant-numeric: tabular-nums; }
+.hit-chain.is-milestone { outline: 2px solid #ffefb0; outline-offset: 3px; }
+.expedition-game .beat-pad > .pad-impact { position: absolute; inset: 4px; pointer-events: none; border: 3px solid var(--hit-color); border-radius: 9px; animation: pad-strike .35s ease-out forwards; }
+.pad-impact > b { position: absolute; right: 9px; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 36px; height: 36px; font-size: 27px; line-height: 1; color: var(--hit-color); background: #102b38; border: 1px solid currentColor; border-radius: 8px; }
+.expedition-game .beat-pad > .pad-impact.hit-empty { border-width: 1px; }
+.pad-impact.hit-empty > b { display: none; }
+.expedition-game .beat-pad > .pad-impact.hit-good { border-style: dashed; }
+.expedition-game.reduce-motion .pad-impact { opacity: 1; }
+@keyframes hit-stamp { from { transform: translateX(-50%) translateY(5px) scale(.87); opacity: .7; } to { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; } }
+@keyframes hit-miss-stamp { from { transform: translateX(-50%) translateY(-4px); } to { transform: translateX(-50%) translateY(0); } }
+@keyframes pad-strike { from { opacity: 1; box-shadow: inset 0 0 14px var(--hit-color); } to { opacity: 0; box-shadow: inset 0 0 0 transparent; } }
+@media(max-width: 760px) {
+ .hit-receipt { padding: 8px 6px; }
+ .hit-receipt-main { gap: 4px; }
+ .hit-receipt-main > strong { font-size: 23px; }
+ .hit-receipt-main > i { font-size: 26px; }
+ .hit-receipt > small { font-size: 14px; }
+ .pad-impact > b { right: 5px; width: 27px; height: 27px; font-size: 22px; }
+}
+@media(orientation: landscape) and (max-height: 600px) {
+ .scenery-caption.behind-hit { visibility: hidden; }
+ .hit-receipt { padding: 5px 7px; bottom: calc(34% + 28px); }
+ .hit-receipt-main > strong { font-size: 23px; }
+ .hit-receipt-main > i { font-size: 26px; }
+ .hit-receipt > small { margin-top: 3px; }
+ .hit-chain { margin-top: 4px; margin-bottom: -15px; padding-block: 2px; }
+ .hit-chain b { font-size: 18px; }
+}
+@media(max-width: 450px) {
+ .hit-receipt-main { flex-direction: column; gap: 2px; }
+ .hit-receipt-main > strong { font-size: 22px; }
+ .pad-impact > b { display: none; }
+}
+
 /* A small beat clock is distinct from the large actionable hit target. */
 .expedition-game .beat-pad { position: relative; padding-left: 82px; box-shadow: inset 0 -5px 0 #b27e3680, 0 4px 0 #020d14, 0 0 calc(var(--beat-pulse, 0) * 24px) #ffd98a80; }
 .music-beat-dots { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); display: grid; grid-template-columns: repeat(2, 24px); gap: 5px; }

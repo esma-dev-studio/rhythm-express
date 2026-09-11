@@ -26,6 +26,7 @@ import type {
   StageDefinition,
 } from "../game/types";
 import { actionPulseAt, beatPosition } from "../game/musicScore";
+import { HIT_LOOKS, HitFeedbackTimeline, type HitVisual } from "../game/hitFeedback";
 import { observeMediaQuery, pointerEventsAvailable } from "../game/browserCompatibility";
 
 interface GameScreenProps {
@@ -89,6 +90,9 @@ export function GameScreen({
   const [playhead, setPlayhead] = useState(-2.5);
   const [effects, setEffects] = useState<EffectsSnapshot>(() => effectsManager.snapshot());
   const [feedback, setFeedback] = useState<HitFeedback | null>(null);
+  const hitTimeline = useMemo(() => new HitFeedbackTimeline(), [session]);
+  const [hitReceipt, setHitReceipt] = useState<HitVisual | null>(null);
+  const [padReceipt, setPadReceipt] = useState<HitVisual | null>(null);
   const [paused, setPaused] = useState(false);
   const [resuming, setResuming] = useState(false);
   const [pausing, setPausing] = useState(false);
@@ -142,14 +146,22 @@ export function GameScreen({
     };
   }, [audioAnchorTime, session, settings.timingOffsetMs]);
 
-  const showFeedback = useCallback((next: HitFeedback | null, applyEffects = true) => {
+  const showFeedback = useCallback((next: HitFeedback | null, applyEffects = true, action?: GameAction) => {
     if (!next) return;
     if (applyEffects) effectsManager.apply(next);
     audio.feedback(next);
+    const receipt = hitTimeline.record(next, session.playhead(audio.now()), session.stats.combo, action);
+    if (receipt) {
+      setHitReceipt(receipt);
+      if (action === "tap") setPadReceipt(receipt);
+      else if (receipt.kind === "miss") setPadReceipt(null);
+    }
     setFeedback(next);
     if (feedbackTimer.current) window.clearTimeout(feedbackTimer.current);
-    feedbackTimer.current = window.setTimeout(() => setFeedback(null), 560);
-  }, [audio, effectsManager]);
+    feedbackTimer.current = window.setTimeout(() => {
+      setFeedback(null); setHitReceipt(null); setPadReceipt(null);
+    }, 760);
+  }, [audio, effectsManager, hitTimeline, session]);
 
   const handleInput = useCallback((action: GameAction, isDown: boolean, eventTimeMs = performance.now()) => {
     if (!startedRef.current || pausedRef.current || completedRef.current) return;
@@ -160,7 +172,7 @@ export function GameScreen({
       encounterHitsRef.current = Math.min(ENCOUNTER_TARGET, encounterHitsRef.current + 1);
       setEncounterHits(encounterHitsRef.current);
     }
-    showFeedback(result);
+    showFeedback(result, true, action);
     setScore(session.stats.score);
     setCombo(session.stats.combo);
     setRouteLane(session.routeLane);
@@ -244,6 +256,7 @@ export function GameScreen({
   }, []);
 
   const readLivePlayhead = useCallback(() => session.playhead(audio.now()), [audio, session]);
+  const readHitVisuals = useCallback((time: number) => hitTimeline.active(time), [hitTimeline]);
 
   const continueWithoutSound = useCallback((performanceNowMs?: number) => {
     audio.continueWithoutSound(performanceNowMs);
@@ -288,7 +301,7 @@ export function GameScreen({
           setActiveEncounter(null);
         }
         const automaticFeedback = session.update(audioNow);
-        if (automaticFeedback.length) showFeedback(automaticFeedback[automaticFeedback.length - 1]);
+        for (const next of automaticFeedback) showFeedback(next);
         const nextEffects = effectsManager.tick(delta);
         session.setDriveActive(nextEffects.overdrive);
         audio.setPerformance(session.stats.combo);
@@ -503,6 +516,7 @@ export function GameScreen({
           stage={stage}
           session={session}
           getPlayhead={readLivePlayhead}
+          getHitVisuals={readHitVisuals}
           travelTime={DIFFICULTIES[difficulty].travelTime}
           effects={effects}
           reducedMotion={reducedMotion}
@@ -510,7 +524,7 @@ export function GameScreen({
           routeLane={routeLane}
           trainColor={trainColor}
         />
-        <div className="scenery-caption"><small>0{stage.order} / {stage.shortName}</small><strong>{nextEvent?.target ?? "まもなく しゅっぱつ"}</strong></div>
+        <div className={"scenery-caption" + (hitReceipt ? " behind-hit" : "")}><small>0{stage.order} / {stage.shortName}</small><strong>{nextEvent?.target ?? "まもなく しゅっぱつ"}</strong></div>
         <div className="run-mission-strip" aria-label="3つの おねがい">
           <span className="run-train-perk">{selectedTrain.perkShort}</span>
           {goalProgress.map((goal) => (
@@ -544,7 +558,20 @@ export function GameScreen({
             <i aria-hidden="true">★</i><i aria-hidden="true">●</i><i aria-hidden="true">◆</i>
           </div>
         )}
-        {feedback && (
+        {hitReceipt ? (
+          <div key={hitReceipt.id} className={"hit-receipt hit-" + hitReceipt.kind}
+            style={{ "--hit-color": HIT_LOOKS[hitReceipt.kind].color } as React.CSSProperties}
+            data-testid="hit-receipt">
+            <div className="hit-receipt-main">
+              <i aria-hidden="true">{HIT_LOOKS[hitReceipt.kind].symbol}</i>
+              <strong>{hitReceipt.title}</strong>
+            </div>
+            <small>{hitReceipt.hint}</small>
+            {hitReceipt.combo >= 2 && <span className={"hit-chain" + (hitReceipt.combo % 5 === 0 ? " is-milestone" : "")}>
+              <b>{hitReceipt.combo}</b> つづいた！
+            </span>}
+          </div>
+        ) : feedback && (
           <div className={"hit-feedback judgement-" + (feedback.judgement ?? "hint")}>
             <strong>{feedback.label}</strong>
             {feedback.deltaMs !== undefined && feedback.judgement !== "miss" && (
@@ -602,6 +629,10 @@ export function GameScreen({
           data-game-input="true"
           data-testid="beat-pad"
         >
+          {padReceipt && <span key={padReceipt.id} className={"pad-impact hit-" + padReceipt.kind} aria-hidden="true"
+            style={{ "--hit-color": HIT_LOOKS[padReceipt.kind].color } as React.CSSProperties}>
+            <b>{HIT_LOOKS[padReceipt.kind].symbol}</b>
+          </span>}
           <span className="music-beat-dots" aria-hidden="true">
             {[0, 1, 2, 3].map(index => <i key={index} className={!paused && index === beat.index ? "is-beat" : ""}>{index + 1}</i>)}
           </span>

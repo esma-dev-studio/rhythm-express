@@ -37,7 +37,7 @@ export class EffectsManager {
     }
     if (this.overdriveRemaining > 0 && delta > 0) delta = Math.max(1, Math.round(delta * 0.6));
     this.energy = Math.max(8, Math.min(100, this.energy + delta));
-    this.pulse = feedback.judgement === "perfect" ? 1 : feedback.judgement ? 0.65 : 0.28;
+    this.pulse = feedback.judgement === "perfect" ? 1 : feedback.judgement === "great" ? .7 : feedback.judgement === "good" ? .26 : 0;
     this.shake = feedback.judgement === "miss" ? 1 : 0;
   }
 
