@@ -25,7 +25,7 @@ import type {
   SessionResult,
   StageDefinition,
 } from "../game/types";
-import { rhythmPulseAt } from "../game/rhythmGuide";
+import { actionPulseAt, beatPosition } from "../game/musicScore";
 import { observeMediaQuery, pointerEventsAvailable } from "../game/browserCompatibility";
 
 interface GameScreenProps {
@@ -291,6 +291,7 @@ export function GameScreen({
         if (automaticFeedback.length) showFeedback(automaticFeedback[automaticFeedback.length - 1]);
         const nextEffects = effectsManager.tick(delta);
         session.setDriveActive(nextEffects.overdrive);
+        audio.setPerformance(session.stats.combo);
         audio.setDrive(nextEffects.overdrive);
         if (refreshUi) {
           setPlayhead(current);
@@ -464,11 +465,12 @@ export function GameScreen({
   const progressPercent = Math.round(progress * 100);
   const beatSeconds = 60 / stage.bpm;
   const countdown = playhead < 0 ? Math.min(4, Math.max(1, Math.ceil(-playhead / beatSeconds))) : 0;
-  const musicPulse = rhythmPulseAt(playhead, stage.bpm);
-  const scaledPulse = reducedMotion ? 0 : Math.max(musicPulse, effects.pulse * settings.effectsStrength);
   const goalProgress = getRunGoalProgress(goals, session.stats);
-  const flowMultiplier = session.flowMultiplier;
   const cue = getRhythmCue(session.chart.visible(playhead, DIFFICULTIES[difficulty].travelTime), playhead);
+  const beat = beatPosition(playhead, stage.bpm);
+  const scaledPulse = reducedMotion || paused ? 0 : Math.max(
+    cue.mode === "rest" ? 0 : actionPulseAt(playhead, cue.time), effects.pulse * settings.effectsStrength,
+  );
   const nextEvent = [...stage.events].reverse().find(event => event.time <= playhead);
 
   return (
@@ -489,7 +491,9 @@ export function GameScreen({
         <div className={"hud-score" + (combo >= 5 ? " has-combo" : "")}>
           <span>てんすう <strong>{score.toLocaleString()}</strong></span>
           <span>つづいた <strong>{combo}</strong></span>
-          <span>ノリ <strong>×{flowMultiplier.toFixed(2)}</strong></span>
+          <span className="music-band-level" aria-label={"おとの あつみ " + (audio.bandLevel + 1)}>
+            おとの あつみ <strong>{["♪", "♪ ♪", "♪ ♪ ♪"][audio.bandLevel]}</strong>
+          </span>
         </div>
         <button ref={pauseButtonRef} className="pause-button" type="button" onClick={pauseGame} disabled={pausing} aria-label="ちょっと やすむ">Ⅱ</button>
       </div>
@@ -544,14 +548,14 @@ export function GameScreen({
           <div className={"hit-feedback judgement-" + (feedback.judgement ?? "hint")}>
             <strong>{feedback.label}</strong>
             {feedback.deltaMs !== undefined && feedback.judgement !== "miss" && (
-              <small>{feedback.deltaMs < -12 ? "すこし はやめ" : feedback.deltaMs > 12 ? "すこし おそめ" : "まんなか"}</small>
+              <small>{feedback.performance ? "♪ きみの おと" : "リズムが つながった"}{feedback.judgement === "perfect" ? "　ぴったり！" : feedback.deltaMs < 0 ? "　すこし はやめ" : "　すこし おそめ"}</small>
             )}
           </div>
         )}
         {countdown > 0 && (
           <div className="countdown-overlay" aria-live="assertive">
             <span>{countdown}</span>
-            <small>あと {countdown} はく。おとを きいて じゅんび！</small>
+            <small>きみが メロディーを ひくよ！<br />あと {countdown} はく。おとを きこう</small>
           </div>
         )}
       </div>
@@ -598,8 +602,11 @@ export function GameScreen({
           data-game-input="true"
           data-testid="beat-pad"
         >
+          <span className="music-beat-dots" aria-hidden="true">
+            {[0, 1, 2, 3].map(index => <i key={index} className={!paused && index === beat.index ? "is-beat" : ""}>{index + 1}</i>)}
+          </span>
           <span><i aria-hidden="true" /> {cue.action}</span>
-          <small>{cue.mode === "release" ? "おわりの ○で はなそう" : "ひかりが ○に きたら"}</small>
+          <small>{cue.mode === "release" ? "おとを のばして… ○で はなす" : cue.mode === "repeat" ? "トン トンで メロディー！" : cue.mode === "rest" ? "おとも ひとやすみ" : "○で おすと メロディーに！"}</small>
         </button>
         <button
           type="button"

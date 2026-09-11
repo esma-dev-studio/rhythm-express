@@ -8,6 +8,7 @@ import { STAGES } from "../game/data/stages";
 import { observeMediaQuery, traceRoundedRect as rect } from "../game/browserCompatibility";
 import { noteScreenX, rhythmGeometry, routeArtwork } from "../game/presentation";
 import { getRhythmCue } from "../game/rhythmCue";
+import { beatPosition } from "../game/musicScore";
 
 interface GameCanvasProps {
   stage: StageDefinition; session: GameSession; getPlayhead: () => number; travelTime: number;
@@ -134,6 +135,11 @@ function drawLane(c: CanvasRenderingContext2D, w: number, h: number, s: SceneSta
   const pps = (w - tx - 34) / Math.max(.5, s.travelTime), beat = 60 / s.stage.bpm; c.fillStyle = "#698a9560";
   for (let t = Math.floor(s.playhead / beat) * beat; t < s.playhead + s.travelTime + beat; t += beat) c.fillRect(noteScreenX(t, s.playhead, w, tx, s.travelTime), ty + r + 16, 2, 5);
   const cue = getRhythmCue(s.notes, s.playhead);
+  const beatGlow = beatPosition(s.playhead, s.stage.bpm).pulse;
+  if (!s.reducedMotion) {
+    c.fillStyle = `rgba(119,210,207,${beatGlow * .22 * s.effectsStrength})`;
+    c.fillRect(12, laneTop, w - 24, 2);
+  }
   const rest = cue.mode === "rest" && s.notes.some(n => n.type === "quiet" && n.time <= s.playhead && n.time + n.duration > s.playhead);
   const due = cue.time !== null && Math.abs(cue.time - s.playhead) < .075;
   const ring = rest ? "#9bacbb" : cue.mode === "release" ? "#86f1d7" : "#ffd27b";
@@ -148,6 +154,12 @@ function drawLane(c: CanvasRenderingContext2D, w: number, h: number, s: SceneSta
   c.strokeStyle = "#06141e"; c.lineWidth = 9; circle(c, tx, ty, r); c.stroke(); c.strokeStyle = ring; c.lineWidth = due ? 5 : 3; circle(c, tx, ty, r); c.stroke(); c.shadowBlur = 0;
   if (s.pulse > .1 && s.shake < .1) {
     c.globalAlpha = s.pulse * .5; c.strokeStyle = "#b9ffe1"; c.lineWidth = 2; circle(c, tx, ty, r + (s.reducedMotion ? 3 : (1 - s.pulse) * 21)); c.stroke(); c.globalAlpha = 1;
+  }
+  if (cue.mode === "release") {
+    c.strokeStyle = "#9fffe1"; c.lineWidth = 2;
+    const held = s.notes.find(n => n.state === "holding");
+    const progress = held ? Math.max(0, Math.min(1, (s.playhead - held.time) / held.duration)) : 0;
+    c.beginPath(); c.arc(tx, ty, r + 7, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress); c.stroke();
   }
   c.textBaseline = "middle"; c.textAlign = "left"; c.font = "bold 14px sans-serif"; c.fillStyle = "#c5d9df"; c.fillText(cue.label, 20, laneTop - 13);
   c.textAlign = "right"; c.font = "13px sans-serif"; c.fillStyle = "#8aa6b1"; if (w > 550) c.fillText("ひかりは こっちから  ←", w - 24, laneTop - 13);

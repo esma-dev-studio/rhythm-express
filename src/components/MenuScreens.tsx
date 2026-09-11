@@ -699,7 +699,7 @@ export function SettingsScreen({ settings, onChange, onCalibration, onBack }: Se
           <span className="setting-control"><output>{Math.round(settings.musicVolume * 100)}%</output><input aria-label="おんがくの おおきさ" type="range" min="0" max="1" step="0.05" value={settings.musicVolume} onChange={(event) => update("musicVolume", Number(event.target.value))} /></span>
         </label>
         <label className="setting-row">
-          <span className="setting-copy"><i aria-hidden="true">●</i><span><strong>おす おとの おおきさ</strong><small>ボタンと ぴったりの おと</small></span></span>
+          <span className="setting-copy"><i aria-hidden="true">●</i><span><strong>おす おとの おおきさ</strong><small>きみが ひく メロディー</small></span></span>
           <span className="setting-control"><output>{Math.round(settings.sfxVolume * 100)}%</output><input aria-label="おす おとの おおきさ" type="range" min="0" max="1" step="0.05" value={settings.sfxVolume} onChange={(event) => update("sfxVolume", Number(event.target.value))} /></span>
         </label>
         <label className="setting-row">

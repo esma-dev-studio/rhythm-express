@@ -8,6 +8,7 @@ import {
   scaleFrequency,
 } from "../src/game/engines/AudioEngine.ts";
 import { STAGES, getStage } from "../src/game/data/stages.ts";
+import { createPerformanceScore } from "../src/game/musicScore.ts";
 
 test("event timestamp age supports relative and epoch based browser timestamps", () => {
   assert.equal(eventTimestampAgeSeconds(975, 1000, 10_000), 0.025);
@@ -165,6 +166,7 @@ class FakeAudioContext {
   filterCount = 0;
   detuneWrites = 0;
   oscillatorStarts = 0;
+  playedOscillators: { frequency: number; time: number }[] = [];
   bufferSourceStarts = 0;
   resumeCalls = 0;
   suspendCalls = 0;
@@ -205,6 +207,7 @@ class FakeAudioContext {
   }
 
   createOscillator() {
+    const frequency = fakeAudioParam();
     const detune = fakeAudioParam();
     const originalSetValue = detune.setValueAtTime.bind(detune);
     detune.setValueAtTime = (value: number) => {
@@ -213,13 +216,15 @@ class FakeAudioContext {
     };
     return {
       type: "sine",
-      frequency: fakeAudioParam(),
+      frequency,
       detune,
       connect() {},
-      start: () => {
+      start: (time: number) => {
         this.oscillatorStarts += 1;
+        this.playedOscillators.push({ frequency: frequency.value, time });
       },
       stop() {},
+      disconnect() {},
     };
   }
 
@@ -563,4 +568,98 @@ test("scheduled count-in tones are silenced with the old session", () => {
   audio.stop();
   assert.equal(internals.sessionGain, null);
   assert.equal(oldSessionGain.disconnected, true);
+});
+
+test("live notes use the chart pitch immediately, without judgement jingles or duplicate triggers", async () => {
+  const context = new FakeAudioContext();
+  const { audio } = audioForContexts([context]);
+  try {
+    await audio.start(STAGES[0], "easy", SETTINGS);
+    const note = createPerformanceScore(STAGES[0], "easy")[0];
+    const before = context.playedOscillators.length;
+    const now = context.currentTime;
+    const feedback = { judgement: "perfect" as const, performance: note, label: "ok", energyDelta: 8 };
+    audio.feedback(feedback);
+    const voices = context.playedOscillators.slice(before);
+    assert.deepEqual(voices.map(v => v.frequency), [note.frequency, note.frequency * 2]);
+    assert.ok(voices.every(v => v.time === now));
+    audio.feedback(feedback);
+    audio.feedback({ judgement: "perfect", noteType: "quiet", label: "bonus", energyDelta: 8 });
+    audio.feedback({ noteType: "booster", label: "stray", energyDelta: -1 });
+    assert.equal(context.playedOscillators.length, before + 2);
+    audio.stop();
+    audio.feedback(feedback);
+    assert.equal(context.playedOscillators.length, before + 2);
+  } finally { audio.stop(); }
+});
+
+test("releasing a held note fades the sustain; a missed release never adds a melody note", async () => {
+  const context = new FakeAudioContext();
+  const { audio } = audioForContexts([context]);
+  try {
+    await audio.start(STAGES[0], "easy", SETTINGS);
+    const score = createPerformanceScore(STAGES[0], "easy");
+    const hold = score.find(n => n.phase === "hold")!;
+    const release = score.find(n => n.noteId === hold.noteId && n.phase === "release")!;
+    const gainStart = context.gainNodes.length;
+    audio.feedback({ judgement: "perfect", performance: hold, label: "hold", energyDelta: 4 });
+    const sustain = context.gainNodes.slice(gainStart);
+    assert.equal(sustain.length, 2);
+    const before = context.playedOscillators.length;
+    audio.feedback({ judgement: "miss", noteType: "beam", performance: release, label: "release", energyDelta: -7 });
+    assert.ok(sustain.every(node => node.gain.value === .0001));
+    assert.equal(context.playedOscillators.length, before);
+  } finally { audio.stop(); }
+});
+
+test("silent iPad recovery mutes the live instrument as well as the backing track", async () => {
+  const context = new FakeAudioContext();
+  const { audio } = audioForContexts([context]);
+  try {
+    await audio.start(STAGES[0], "easy", SETTINGS);
+    audio.continueWithoutSound();
+    const before = context.playedOscillators.length;
+    audio.feedback({ judgement: "perfect", performance: createPerformanceScore(STAGES[0], "easy")[0], label: "silent", energyDelta: 8 });
+    assert.equal(context.playedOscillators.length, before);
+  } finally { audio.stop(); }
+});
+
+test("the quiet guide shares the live pitch and is cancelled when that note is played", async () => {
+  const context = new FakeAudioContext();
+  const { audio } = audioForContexts([context]);
+  try {
+    await audio.start(STAGES[0], "easy", SETTINGS);
+    const note = createPerformanceScore(STAGES[0], "easy")[0];
+    const internals = audio as unknown as { scheduleRhythmGuide(time: number, cue: typeof note): void };
+    const before = context.gainNodes.length;
+    internals.scheduleRhythmGuide(context.currentTime + .4, note);
+    assert.equal(context.playedOscillators[context.playedOscillators.length - 1].frequency, note.frequency);
+    const guide = context.gainNodes[before];
+    audio.feedback({ judgement: "great", performance: note, label: "play", energyDelta: 5 });
+    assert.equal(guide.gain.value, .0001);
+    const played = context.playedOscillators.length;
+    internals.scheduleRhythmGuide(context.currentTime + .4, note);
+    assert.equal(context.playedOscillators.length, played);
+  } finally { audio.stop(); }
+});
+
+test("band layers change on bar boundaries and the display waits until they are audible", async () => {
+  const context = new FakeAudioContext();
+  const { audio } = audioForContexts([context]);
+  try {
+    await audio.start(STAGES[0], "easy", SETTINGS);
+    const internals = audio as unknown as { scheduleSubdivision(time: number, step: number, stage: typeof STAGES[0]): void };
+    audio.setPerformance(18);
+    internals.scheduleSubdivision(10, 16, STAGES[0]);
+    assert.equal(audio.bandLevel, 0);
+    context.currentTime = 10.001;
+    assert.equal(audio.bandLevel, 2);
+    audio.setPerformance(0);
+    internals.scheduleSubdivision(10.15625, 17, STAGES[0]);
+    assert.equal(audio.bandLevel, 2);
+    internals.scheduleSubdivision(12.5, 32, STAGES[0]);
+    assert.equal(audio.bandLevel, 2);
+    context.currentTime = 12.501;
+    assert.equal(audio.bandLevel, 0);
+  } finally { audio.stop(); }
 });

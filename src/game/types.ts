@@ -73,12 +73,19 @@ export interface RuntimeNote extends ChartNote {
 
 export type GameAction = "tap" | "left" | "right";
 
+export interface PerformanceGesture {
+  noteId: string;
+  phase: "strike" | "hold" | "release";
+  slot: number;
+}
+
 export interface HitFeedback {
   judgement?: Judgement;
   label: string;
   noteType?: NoteType;
   deltaMs?: number;
   energyDelta: number;
+  performance?: PerformanceGesture;
 }
 
 export interface RunGoal {

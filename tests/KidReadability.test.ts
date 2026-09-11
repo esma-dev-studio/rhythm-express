@@ -7,6 +7,7 @@ const CHILD_COPY_FILES = [
   "src/components/GameCanvas.tsx",
   "src/components/ExpeditionCanvas.tsx",
   "src/game/rhythmCue.ts",
+  "src/game/musicScore.ts",
   "src/components/GameScreen.tsx",
   "src/components/MenuScreens.tsx",
   "src/game/adventureEvents.ts",

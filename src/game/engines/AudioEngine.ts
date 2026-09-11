@@ -1,5 +1,6 @@
 import type { Difficulty, GameSettings, HitFeedback, StageDefinition, StageTheme } from "../types.ts";
-import { cueSubdivisionsForChart } from "../rhythmGuide.ts";
+import { CHORD_PROGRESSIONS, createPerformanceScore, musicLevelForCombo, performanceKey, scaleFrequency, type PerformanceNote } from "../musicScore.ts";
+export { scaleFrequency } from "../musicScore.ts";
 
 type WindowWithAudio = Window & typeof globalThis & {
   webkitAudioContext?: typeof AudioContext;
@@ -26,7 +27,6 @@ interface VoiceShape {
 }
 
 interface Arrangement {
-  progression: number[];
   kickSteps: number[];
   bassSteps: number[];
   bassDegrees: number[];
@@ -42,7 +42,6 @@ class AudioTransitionSupersededError extends Error {
 
 const ARRANGEMENTS: Record<StageTheme, Arrangement> = {
   city: {
-    progression: [0, 3, 4, 3],
     kickSteps: [0, 8],
     bassSteps: [0, 6, 8, 12],
     bassDegrees: [0, 4, 2, 4],
@@ -50,7 +49,6 @@ const ARRANGEMENTS: Record<StageTheme, Arrangement> = {
     leadDegrees: [0, 1, 2, 4, 2, 1, 4, 5],
   },
   jungle: {
-    progression: [0, 2, 1, 4],
     kickSteps: [0, 6, 8, 14],
     bassSteps: [0, 3, 6, 8, 10, 14],
     bassDegrees: [0, 0, 4, 2, 4, 1],
@@ -58,7 +56,6 @@ const ARRANGEMENTS: Record<StageTheme, Arrangement> = {
     leadDegrees: [0, 2, 1, 3, 4, 2, 5, 3],
   },
   moon: {
-    progression: [0, 3, 1, 4],
     kickSteps: [0, 8, 10],
     bassSteps: [0, 4, 7, 8, 12, 14],
     bassDegrees: [0, 4, 2, 1, 4, 5],
@@ -123,19 +120,6 @@ export function mixSliderGain(value: number, channel: MixChannel): number {
   return normalized * 0.68;
 }
 
-export function scaleFrequency(scale: number[], degree: number, octaveShift = 0): number {
-  if (scale.length === 0) return 440;
-  const first = scale[0];
-  const last = scale[scale.length - 1];
-  const hasOctaveEndpoint = scale.length > 1
-    && first > 0
-    && Math.abs(last / first - 2) < 0.015;
-  const period = hasOctaveEndpoint ? scale.length - 1 : scale.length;
-  const wrappedDegree = ((degree % period) + period) % period;
-  const octave = Math.floor(degree / period) + octaveShift;
-  return scale[wrappedDegree] * 2 ** octave;
-}
-
 export class AudioEngine {
   private context: AudioContext | null = null;
   private musicGain: GainNode | null = null;
@@ -144,7 +128,15 @@ export class AudioEngine {
   private scheduler: ReturnType<typeof setInterval> | null = null;
   private stage: StageDefinition | null = null;
   private difficulty: Difficulty = "easy";
-  private rhythmCueSteps = new Set<number>();
+  private performanceGain: GainNode | null = null;
+  private performanceScore = new Map<string, PerformanceNote>();
+  private scoreSteps = new Map<number, PerformanceNote[]>();
+  private playedNotes = new Set<string>();
+  private guideVoices = new Map<string, { gain: GainNode; endsAt: number }>();
+  private heldVoices: GainNode[] = [];
+  private requestedMusicLevel = 0;
+  private musicLevel = 0;
+  private bandChanges: { time: number; level: number }[] = [];
   private gameStartTime = 0;
   private nextSubdivision = 0;
   private noiseBuffer: AudioBuffer | null = null;
@@ -209,7 +201,15 @@ export class AudioEngine {
     }
     this.stage = stage;
     this.difficulty = difficulty;
-    this.rhythmCueSteps = cueSubdivisionsForChart(stage.notes[difficulty], stage.bpm);
+    const score = createPerformanceScore(stage, difficulty);
+    this.performanceScore = new Map(score.map(note => [note.key, note]));
+    for (const note of score) {
+      const step = Math.round(note.time / (60 / stage.bpm / 4));
+      this.scoreSteps.set(step, [...(this.scoreSteps.get(step) ?? []), note]);
+    }
+    this.performanceGain = this.context.createGain();
+    this.performanceGain.gain.value = 1.5;
+    this.performanceGain.connect(this.sfxGain!);
     this.sessionGain = this.context.createGain();
     this.sessionGain.gain.value = 0.94;
     this.sessionGain.connect(this.musicGain);
@@ -254,6 +254,12 @@ export class AudioEngine {
     this.disableClockMonitor();
     if (this.scheduler) clearInterval(this.scheduler);
     this.scheduler = null;
+    this.releasePerformanceVoice();
+    if (this.performanceGain) {
+      this.performanceGain.gain.value = 0;
+      this.performanceGain.disconnect();
+      this.performanceGain = null;
+    }
     this.driveActive = false;
     if (this.context && this.sessionGain) {
       try {
@@ -407,18 +413,82 @@ export class AudioEngine {
       oldSessionGain.disconnect();
     }
     this.driveActive = false;
+    this.releasePerformanceVoice();
+    if (this.performanceGain) {
+      this.performanceGain.gain.value = 0;
+      this.performanceGain.disconnect();
+    }
+    this.performanceGain = null;
+    this.performanceScore.clear();
+    this.scoreSteps.clear();
+    this.playedNotes.clear();
+    this.guideVoices.clear();
+    this.requestedMusicLevel = 0;
+    this.musicLevel = 0;
+    this.bandChanges = [];
     this.sessionGain = null;
     this.stage = null;
-    this.rhythmCueSteps.clear();
   }
 
   feedback(feedback: HitFeedback): void {
-    if (!this.context || !this.sfxGain) return;
-    if (feedback.judgement === "perfect") this.tone(1046.5, 0.045, "sine", 0.052);
-    else if (feedback.judgement === "great") this.tone(783.99, 0.042, "triangle", 0.043);
-    else if (feedback.judgement === "good") this.tone(587.33, 0.04, "triangle", 0.034);
-    else if (feedback.judgement === "miss") this.noise(0.035, 0.022);
-    else if (feedback.noteType === "booster") this.tone(392, 0.026, "triangle", 0.02);
+    if (!this.context || this.silentMode || !this.performanceGain || !this.stage) return;
+    const gesture = feedback.performance;
+    if (gesture?.phase === "release" || (feedback.noteType === "beam" && feedback.judgement === "miss")) {
+      this.releasePerformanceVoice();
+    }
+    // Automatic awards, stray taps and repeat fingers never play the solo part.
+    if (!gesture || !feedback.judgement || feedback.judgement === "miss") return;
+    const key = performanceKey(gesture);
+    const note = this.performanceScore.get(key);
+    if (!note || this.playedNotes.has(key)) return;
+    this.playedNotes.add(key);
+    const now = this.context.currentTime;
+    const guide = this.guideVoices.get(key);
+    if (guide) {
+      guide.gain.gain.cancelScheduledValues(now);
+      guide.gain.gain.setTargetAtTime(.0001, now, .008);
+      this.guideVoices.delete(key);
+    }
+    // Play immediately: snapping to a future beat makes the controls feel late.
+    this.playPerformanceNote(note, now, feedback.judgement === "perfect" ? 1 : feedback.judgement === "great" ? .88 : .74);
+  }
+
+  setPerformance(combo: number): void { this.requestedMusicLevel = musicLevelForCombo(combo); }
+  get bandLevel(): number {
+    const now = this.now();
+    for (let i = this.bandChanges.length - 1; i >= 0; i--) {
+      if (this.bandChanges[i].time <= now) return this.bandChanges[i].level;
+    }
+    return 0;
+  }
+
+  private releasePerformanceVoice(): void {
+    if (this.context) for (const gain of this.heldVoices) {
+      try {
+        gain.gain.cancelScheduledValues(this.context.currentTime);
+        gain.gain.setTargetAtTime(.0001, this.context.currentTime, .022);
+      } catch { /* An interrupted context must not block the silent fallback. */ }
+    }
+    this.heldVoices = [];
+  }
+
+  private playPerformanceNote(note: PerformanceNote, time: number, expression: number): void {
+    if (!this.stage || !this.performanceGain) return;
+    const hold = note.phase === "hold";
+    if (hold) this.releasePerformanceVoice();
+    const duration = hold ? note.duration + .3 : note.duration;
+    const voices: GainNode[] = [];
+    const voice = (frequency: number, volume: number, type: OscillatorType, detune = 0) => {
+      const gain = this.musicTone(frequency, time, duration, type, volume * expression, {
+        attack: hold ? .025 : .003, release: hold ? .15 : duration * .7, detune,
+        filterType: "lowpass", filterFrequency: this.stage?.theme === "jungle" ? 2300 : 4200,
+      }, this.performanceGain);
+      if (gain) voices.push(gain);
+    };
+    voice(note.frequency, hold ? .12 : .155, this.stage.theme === "moon" ? "sine" : "triangle");
+    voice(note.frequency * 2, hold ? .025 : .035, "sine", this.stage.theme === "moon" ? 4 : 0);
+    if (this.bandLevel > 0 || this.driveActive) voice(note.frequency / 2, .027, "sine");
+    if (hold) this.heldVoices = voices;
   }
 
   setDrive(active: boolean): void {
@@ -429,12 +499,7 @@ export class AudioEngine {
       this.sessionGain.gain.cancelScheduledValues(now);
       this.sessionGain.gain.setTargetAtTime(active ? 1.08 : 0.94, now, 0.035);
     }
-    if (active) {
-      [523.25, 659.25, 783.99].forEach((frequency, index) => {
-        this.tone(frequency, 0.14, "triangle", 0.045, index * 0.055);
-      });
-      this.tone(1046.5, 0.22, "sine", 0.034, 0.17);
-    }
+    // The arrangement opens on its musical grid, without an off-beat jingle.
   }
 
   arrival(): void {
@@ -684,6 +749,9 @@ export class AudioEngine {
     if (!this.context || !this.stage || !this.sessionGain) return;
     const secondsPerSubdivision = 60 / this.stage.bpm / 4;
     const horizon = this.context.currentTime + 0.65;
+    for (const [key, voice] of this.guideVoices) {
+      if (voice.endsAt < this.context.currentTime) this.guideVoices.delete(key);
+    }
     while (this.gameStartTime + this.nextSubdivision * secondsPerSubdivision < horizon) {
       const time = this.gameStartTime + this.nextSubdivision * secondsPerSubdivision;
       if (time >= this.context.currentTime - 0.02) {
@@ -703,11 +771,20 @@ export class AudioEngine {
     const step = subdivision % 16;
     const bar = Math.floor(subdivision / 16);
     const elapsed = subdivision * (60 / stage.bpm / 4);
-    const chorus = this.driveActive || (elapsed >= stage.duration * 0.7 && elapsed < stage.duration - 2);
-    const rootDegree = arrangement.progression[bar % arrangement.progression.length];
-
-    if (this.rhythmCueSteps.has(subdivision)) {
-      this.scheduleRhythmGuide(time, subdivision, stage);
+    if (step === 0 && this.musicLevel !== this.requestedMusicLevel) {
+      this.musicLevel = this.requestedMusicLevel;
+      this.bandChanges.push({ time, level: this.musicLevel });
+    }
+    const chorus = this.driveActive || this.musicLevel === 2 || (elapsed >= stage.duration * 0.7 && elapsed < stage.duration - 2);
+    const roots = CHORD_PROGRESSIONS[stage.theme];
+    const rootDegree = roots[bar % roots.length];
+    const scoreNotes = this.scoreSteps.get(subdivision) ?? [];
+    for (const note of scoreNotes) this.scheduleRhythmGuide(time, note);
+    const rest = stage.notes[this.difficulty].some(note => note.type === "quiet" && elapsed >= note.time - .001 && elapsed < note.time + note.duration - .001);
+    // A musical breath makes "do not press" audible, not just a visual rule.
+    if (rest) {
+      if (step === 0) this.padChord(stage, rootDegree, time, 60 / stage.bpm * 1.8, false);
+      return;
     }
 
     if (arrangement.kickSteps.includes(step)) {
@@ -747,9 +824,13 @@ export class AudioEngine {
     }
 
     const leadIndex = arrangement.leadSteps.indexOf(step);
-    if (leadIndex >= 0) {
+    const firstAction = stage.notes[this.difficulty][0]?.time ?? 0;
+    const chart = stage.notes[this.difficulty];
+    const lastAction = chart[chart.length - 1];
+    const outro = lastAction ? elapsed > lastAction.time + lastAction.duration + 60 / stage.bpm : true;
+    if (leadIndex >= 0 && (elapsed < firstAction || outro)) {
       const phraseLift = bar % 4 === 2 ? 1 : 0;
-      const degree = arrangement.leadDegrees[leadIndex] + phraseLift;
+      const degree = rootDegree + arrangement.leadDegrees[leadIndex] + phraseLift;
       const frequency = scaleFrequency(stage.musicScale, degree);
       this.leadTone(stage.theme, frequency, time, 60 / stage.bpm * 0.34, chorus);
     }
@@ -757,23 +838,11 @@ export class AudioEngine {
     this.scheduleThemeTexture(stage, step, rootDegree, time, chorus);
   }
 
-  private scheduleRhythmGuide(time: number, subdivision: number, stage: StageDefinition): void {
-    const volume = this.difficulty === "easy" ? 0.036 : this.difficulty === "normal" ? 0.027 : 0.019;
-    const degree = subdivision % 4 === 0 ? 4 : 2;
-    const duration = Math.min(0.078, 60 / stage.bpm * 0.14);
-    this.musicTone(
-      scaleFrequency(stage.musicScale, degree, 1),
-      time,
-      duration,
-      "sine",
-      volume,
-      {
-        attack: 0.002,
-        release: Math.max(0.025, duration * 0.72),
-        filterType: "highpass",
-        filterFrequency: 1100,
-      },
-    );
+  private scheduleRhythmGuide(time: number, note: PerformanceNote): void {
+    if (this.playedNotes.has(note.key)) return;
+    const volume = this.difficulty === "easy" ? .014 : this.difficulty === "normal" ? .009 : .006;
+    const gain = this.musicTone(note.frequency, time, .075, "sine", volume, { attack: .003, release: .055 });
+    if (gain) this.guideVoices.set(note.key, { gain, endsAt: time + .1 });
   }
 
   private padChord(
@@ -836,7 +905,7 @@ export class AudioEngine {
       });
     }
     if (theme === "moon") {
-      this.musicTone(frequency, time + 60 / 120 / 4, duration * 0.68, "sine", 0.014, {
+      this.musicTone(frequency, time + 60 / (this.stage?.bpm ?? 120) / 4, duration * 0.68, "sine", 0.014, {
         attack: 0.018,
         release: Math.min(0.09, duration * 0.5),
         detune: 7,
@@ -883,8 +952,9 @@ export class AudioEngine {
     type: OscillatorType,
     volume: number,
     shape: VoiceShape = {},
-  ): void {
-    if (!this.context || !this.sessionGain) return;
+    destination: GainNode | null = this.sessionGain,
+  ): GainNode | null {
+    if (!this.context || !destination) return null;
     const safeDuration = Math.max(0.025, duration);
     const attack = Math.max(0.002, Math.min(shape.attack ?? 0.009, safeDuration * 0.38));
     const release = Math.max(0.012, Math.min(shape.release ?? 0.07, safeDuration * 0.58));
@@ -909,9 +979,11 @@ export class AudioEngine {
     } else {
       oscillator.connect(gain);
     }
-    gain.connect(this.sessionGain);
+    gain.connect(destination);
     oscillator.start(time);
     oscillator.stop(time + safeDuration + 0.025);
+    oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
+    return gain;
   }
 
   private kick(time: number, volume: number): void {
@@ -1008,18 +1080,6 @@ export class AudioEngine {
     gain.connect(this.sessionGain);
     oscillator.start(time);
     oscillator.stop(time + duration + 0.02);
-  }
-
-  private noise(duration: number, volume: number): void {
-    if (!this.context || !this.sfxGain) return;
-    const source = this.context.createBufferSource();
-    const gain = this.context.createGain();
-    source.buffer = this.getNoiseBuffer();
-    gain.gain.value = volume;
-    source.connect(gain);
-    gain.connect(this.sfxGain);
-    const maxOffset = Math.max(0, source.buffer.duration - duration);
-    source.start(0, Math.random() * maxOffset, duration);
   }
 
   private getNoiseBuffer(): AudioBuffer {

@@ -128,8 +128,10 @@ export class GameSession {
         return { label: "ながおしを つづけよう。おわりで はなしてね", noteType: "beam", energyDelta: 0 };
       }
 
-      const booster = this.chart.active("booster", now);
-      if (booster) {
+      const booster = this.chart.active("booster", now) ?? this.chart.nearest(["booster"], now, this.difficulty);
+      // Chart decimals can differ from the next bar by up to 0.1 ms.
+      // Never let the tail of a roll steal that next playable note.
+      if (booster && now < booster.time + booster.duration - .0002) {
         return this.hitBooster(booster, now);
       }
 
@@ -141,13 +143,15 @@ export class GameSession {
         beam.beamStartJudgement = judgement;
         beam.beamStartDeltaMs = deltaMs;
         if (judgement === "miss") return this.finish(beam, judgement, deltaMs);
-        return { judgement, label: "そのままのばそう！", noteType: "beam", deltaMs, energyDelta: 4 };
+        return { judgement, label: "そのままのばそう！", noteType: "beam", deltaMs, energyDelta: 4,
+          performance: { noteId: beam.id, phase: "hold", slot: 0 } };
       }
 
       const spark = this.chart.nearest(["spark"], now, this.difficulty);
       if (spark) {
         const deltaMs = (now - spark.time) * 1000;
-        return this.finish(spark, judgeTiming(deltaMs, this.difficulty), deltaMs);
+        return { ...this.finish(spark, judgeTiming(deltaMs, this.difficulty), deltaMs),
+          performance: { noteId: spark.id, phase: "strike", slot: 0 } };
       }
 
       return { label: "リズムを よく きこう", energyDelta: -1 };
@@ -164,7 +168,7 @@ export class GameSession {
     this.routeLane = action === "left" ? -1 : 1;
     const result = this.finish(switchNote, judgeTiming(deltaMs, this.difficulty), deltaMs);
     if (result.judgement !== "miss") this.stats.switchSuccess += 1;
-    return result;
+    return { ...result, performance: { noteId: switchNote.id, phase: "strike", slot: 0 } };
   }
 
   update(audioTime: number): HitFeedback[] {
@@ -216,7 +220,8 @@ export class GameSession {
     booster.boosterHitSlots.push(slot);
     booster.tapCount = booster.boosterHitSlots.length;
     const deltaMs = (now - slotTime) * 1000;
-    return { judgement: judgeTiming(deltaMs, this.difficulty), deltaMs, label: "ビート " + booster.tapCount + "/" + targetHits + "！", noteType: "booster", energyDelta: 1 };
+    return { judgement: judgeTiming(deltaMs, this.difficulty), deltaMs, label: "ビート " + booster.tapCount + "/" + targetHits + "！", noteType: "booster", energyDelta: 1,
+      performance: { noteId: booster.id, phase: "strike", slot } };
   }
 
   private releaseBeam(now: number): HitFeedback | null {
@@ -229,7 +234,8 @@ export class GameSession {
     const judgement = worseJudgement(startJudgement, releaseJudgement);
     const result = this.finish(beam, judgement, deltaMs);
     if (judgement !== "miss") this.stats.beamSuccess += 1;
-    return { ...result, label: judgement === "miss" ? "おわりまで のばしてみよう" : "ながい おとを キープ！" };
+    return { ...result, label: judgement === "miss" ? "おわりまで のばしてみよう" : "ながい おとを キープ！",
+      performance: { noteId: beam.id, phase: "release", slot: 1 } };
   }
 
   private finish(note: RuntimeNote, judgement: Judgement, deltaMs: number): HitFeedback {
