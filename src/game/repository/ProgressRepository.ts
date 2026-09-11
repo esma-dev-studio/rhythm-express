@@ -5,10 +5,12 @@ import {
   type JourneyReward,
 } from "../journeyRewards.ts";
 import type { Difficulty, GameSettings, ProgressData, SessionResult, StageTheme } from "../types.ts";
+import { personalBest, rhythmRecordKey, validRhythmBest } from "../rhythmRival.ts";
 
 const STORAGE_KEY = "rhythm-express-progress-v1";
 
 export const DEFAULT_SETTINGS: GameSettings = {
+  playMode: "duet",
   musicVolume: 0.76,
   sfxVolume: 0.55,
   effectsStrength: 0.8,
@@ -18,6 +20,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
 
 export function migrateSettings(saved?: Partial<GameSettings>): GameSettings {
   const settings = { ...DEFAULT_SETTINGS, ...(saved ?? {}) };
+  settings.playMode = saved?.playMode === "one" ? "one" : "duet";
   const usesOriginalAudioDefaults = saved?.musicVolume === 0.58 && saved?.sfxVolume === 0.72;
   if (usesOriginalAudioDefaults) {
     settings.musicVolume = DEFAULT_SETTINGS.musicVolume;
@@ -66,7 +69,8 @@ export class ProgressRepository {
 
   save(progress: ProgressData): void {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+    try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(progress)); }
+    catch { /* Safari storage restrictions must not prevent playing. */ }
   }
 
   recordResult(
@@ -76,6 +80,12 @@ export class ProgressRepository {
     result: SessionResult,
   ): { progress: ProgressData; unlocked: string[]; journeyReward: JourneyReward } {
     const next: ProgressData = JSON.parse(JSON.stringify(progress)) as ProgressData;
+    const mode = result.playMode ?? "one";
+    const best = personalBest(progress, stage, difficulty, mode);
+    const attempt = validRhythmBest({ points: result.rhythmPoints, trace: result.rhythmTrace });
+    if (attempt && (!best || attempt.points > best.points)) {
+      next.rhythmBests = { ...next.rhythmBests, [rhythmRecordKey(stage, difficulty, mode)]: attempt };
+    }
     next.journeyCount = Math.max(0, Math.floor(next.journeyCount ?? 0)) + 1;
     next.souvenirStickers = normalizeOwnedStickers(next.souvenirStickers);
     const journeyReward = rewardForJourney(next.journeyCount, next.souvenirStickers);

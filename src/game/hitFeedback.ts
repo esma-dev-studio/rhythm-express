@@ -22,6 +22,7 @@ export interface HitVisual {
 }
 
 function hintFor(feedback: HitFeedback, kind: HitVisualKind): string {
+  if (feedback.expectedHand) return feedback.expectedHand === "left" ? "あおの ひだりを おそう" : "ピンクの みぎを おそう";
   if (feedback.noteType === "quiet") return "ここは おさずに まとう";
   if (feedback.performance?.phase === "hold") return "そのまま のばそう";
   if (feedback.performance?.phase === "release") {
@@ -47,7 +48,7 @@ export class HitFeedbackTimeline {
       ? "miss" : feedback.judgement ?? "empty";
     const visual: HitVisual = {
       id: this.nextId++, time, kind, action,
-      title: feedback.noteType === "quiet" ? "おやすみ！" : kind === "empty" && feedback.noteType === "beam" ? "のばそう" : HIT_LOOKS[kind].title,
+      title: feedback.expectedHand ? "はんたい！" : feedback.noteType === "quiet" ? "おやすみ！" : kind === "empty" && feedback.noteType === "beam" ? "のばそう" : HIT_LOOKS[kind].title,
       hint: hintFor(feedback, kind),
       combo: kind === "perfect" || kind === "great" || kind === "good" ? combo : 0,
     };

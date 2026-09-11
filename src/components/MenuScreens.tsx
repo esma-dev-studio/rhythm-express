@@ -130,7 +130,7 @@ export function TitleScreen({
             あそびかた
           </button>
         </div>
-        <div className="kid-first-guide"><span aria-hidden="true">♪</span><strong>ひかりが ○に きたら、おす！</strong></div>
+        <div className="kid-first-guide"><span aria-hidden="true">♪</span><strong>{progress.settings.playMode === "one" ? "ひかりが ○に きたら、おす！" : "あおは ひだり、ピンクは みぎ。りょうてで トントン！"}</strong></div>
       </section>
       <section className="departure-board" aria-label="いきさきを えらぶ">
         <header><span>つぎの たびを えらぼう</span><span>★ {totalMissionStars(progress)}<small> / {MAX_MISSION_STARS}</small></span></header>
@@ -501,12 +501,30 @@ export function WorldScreen({ progress, onSelect, onCollection, onCalibration }:
   );
 }
 
+function PlayModeChoice({ mode, onChange }: { mode: "one" | "duet"; onChange: (mode: "one" | "duet") => void }) {
+  return <section className="play-mode-choice" aria-label="あそびかたを えらぶ">
+    <h2>どうやって あそぶ？</h2>
+    <div>
+      <button type="button" aria-pressed={mode === "duet"} onClick={() => onChange("duet")} data-testid="mode-duet">
+        <span className="mode-hands" aria-hidden="true"><i>←</i><i>→</i></span>
+        <strong>りょうてで トントン</strong><small>あおは ひだり。ピンクは みぎ。</small>
+      </button>
+      <button type="button" aria-pressed={mode === "one"} onClick={() => onChange("one")} data-testid="mode-one">
+        <span className="mode-hands solo" aria-hidden="true"><i>●</i></span>
+        <strong>ひとつの ボタン</strong><small>かたてで ゆっくり はじめよう。</small>
+      </button>
+    </div>
+    <p>○に かさなったら おそう。ながい おとは おしたまま。</p>
+  </section>;
+}
+
 interface DifficultyScreenProps {
   stage: StageDefinition;
   selected: Difficulty;
   progress: ProgressData;
   onSelect: (difficulty: Difficulty) => void;
   onSelectTrain: (trainId: string) => void;
+  onPlayMode: (mode: "one" | "duet") => void;
   onStart: () => void;
   onBack: () => void;
 }
@@ -517,6 +535,7 @@ export function DifficultyScreen({
   progress,
   onSelect,
   onSelectTrain,
+  onPlayMode,
   onStart,
   onBack,
 }: DifficultyScreenProps) {
@@ -564,6 +583,7 @@ export function DifficultyScreen({
           );
         })}
       </div>
+      <PlayModeChoice mode={progress.settings.playMode === "one" ? "one" : "duet"} onChange={onPlayMode} />
       <button className="primary-command large-command centered-command dispatch-start-command" type="button" onClick={onStart}>
         この コースへ しゅっぱつ！ →
       </button>
@@ -694,6 +714,7 @@ export function SettingsScreen({ settings, onChange, onCalibration, onBack }: Se
         <h1>あそびやすく しよう</h1>
       </section>
       <div className="settings-list">
+        <PlayModeChoice mode={settings.playMode === "one" ? "one" : "duet"} onChange={mode => update("playMode", mode)} />
         <label className="setting-row">
           <span className="setting-copy"><i aria-hidden="true">♪</i><span><strong>おんがくの おおきさ</strong><small>コースの おんがく</small></span></span>
           <span className="setting-control"><output>{Math.round(settings.musicVolume * 100)}%</output><input aria-label="おんがくの おおきさ" type="range" min="0" max="1" step="0.05" value={settings.musicVolume} onChange={(event) => update("musicVolume", Number(event.target.value))} /></span>
@@ -915,6 +936,12 @@ export function ResultScreen({ stage, difficulty, result, unlocked, journeyRewar
         <span>{result.message}</span>
       </section>
       <section className="result-body">
+        {result.rhythmPoints !== undefined && <section className="rhythm-result" aria-label="リズムの きろく">
+          <div><small>{result.playMode === "duet" ? "りょうてで トントン" : "ひとつの ボタン"}</small><h2>{result.previousRhythmPoints === undefined ? "きみの きろくが できた！" : result.rhythmPoints > result.previousRhythmPoints ? "★ じぶんの ベストを こえた！" : result.rhythmPoints === result.previousRhythmPoints ? "ベストと おなじ！" : "さいごまで はしれたね！"}</h2>
+            <p>{result.previousRhythmPoints === undefined ? "つぎは まえの じぶんと リズムくらべ！" : `まえの ベスト ${result.previousRhythmPoints.toLocaleString()}　${result.rhythmPoints > result.previousRhythmPoints ? `+${result.rhythmPoints - result.previousRhythmPoints} アップ！` : ""}`}</p></div>
+          <strong>{result.rhythmPoints.toLocaleString()}<small>リズムてん</small></strong>
+          <footer>ぴったり ★ 100　いいね ○ 70　おしい △ 40<br />れっしゃの パワーに かんけいなく、リズムだけで くらべるよ。</footer>
+        </section>}
         <section className={"ticket-reward-card" + (journeyReward.completedCard ? " is-complete" : "")} data-testid="journey-reward">
           <header><span>わくわく きっぷ</span><strong>スタンプ ゲット！</strong></header>
           <TicketStamps filled={journeyReward.stampPosition} />

@@ -9,6 +9,8 @@ const CHILD_COPY_FILES = [
   "src/game/rhythmCue.ts",
   "src/game/musicScore.ts",
   "src/game/hitFeedback.ts",
+  "src/game/handPlay.ts",
+  "src/game/rhythmRival.ts",
   "src/components/GameScreen.tsx",
   "src/components/MenuScreens.tsx",
   "src/game/adventureEvents.ts",

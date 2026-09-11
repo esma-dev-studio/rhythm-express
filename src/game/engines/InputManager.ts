@@ -32,6 +32,8 @@ export class InputManager {
   }
 
   private mapKey(key: string): GameAction | null {
+    if (key.toLowerCase() === "a") return "pad-left";
+    if (key.toLowerCase() === "l") return "pad-right";
     if (key === " " || key === "Enter") return "tap";
     if (key === "ArrowLeft") return "left";
     if (key === "ArrowRight") return "right";

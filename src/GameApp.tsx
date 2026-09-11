@@ -3,6 +3,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GameScreen } from "./components/GameScreen";
+import { playModeFor } from "./game/handPlay";
+import { personalBest } from "./game/rhythmRival";
 import {
   AppHeader,
   CalibrationScreen,
@@ -89,13 +91,12 @@ export default function GameApp() {
   };
 
   const startJourney = async () => {
-    const firstStage = getStage("city");
     setSelectedStage("city");
     setDifficulty("easy");
     if (!progress.seenTutorial) {
       saveProgress({ ...progress, seenTutorial: true });
     }
-    await launchGame(firstStage, "easy");
+    setScreen("difficulty");
   };
 
   const completeTutorial = () => {
@@ -219,7 +220,7 @@ export default function GameApp() {
   const showHeader = !["title", "game", "result"].includes(screen);
 
   return (
-    <div className="app-shell" aria-busy={launchStatus === "preparing"}>
+    <div className={"app-shell" + (screen === "game" ? " is-playing" : "")} aria-busy={launchStatus === "preparing"}>
       <div className="app-main" inert={launchStatus !== "idle"}>
         {showHeader && (
         <AppHeader
@@ -273,6 +274,7 @@ export default function GameApp() {
           onSelect={setDifficulty}
           onSelectTrain={selectTrain}
           onStart={() => void launchGame()}
+          onPlayMode={playMode => updateSettings({ ...progress.settings, playMode })}
           onBack={() => setScreen("world")}
         />
       )}
@@ -288,6 +290,7 @@ export default function GameApp() {
           settings={progress.settings}
           trainColor={getTrain(progress.selectedTrain).color}
           trainId={progress.selectedTrain}
+          rhythmBest={personalBest(progress, stage.id, difficulty, playModeFor(progress.settings))}
           onComplete={completeGame}
           onExit={leaveGame}
           onRestart={() => void launchGame()}

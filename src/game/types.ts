@@ -1,6 +1,7 @@
 export type Difficulty = "easy" | "normal" | "challenge";
 export type NoteType = "spark" | "beam" | "switch" | "booster" | "quiet";
 export type Direction = "left" | "right";
+export type PlayMode = "one" | "duet";
 export type StageTheme = "city" | "jungle" | "moon";
 export type Judgement = "perfect" | "great" | "good" | "miss";
 export type RunGoalMetric = "accuracy" | "maxCombo" | "driveActivations" | "perfect" | "routeMastery" | "switchSuccess";
@@ -14,6 +15,7 @@ export interface ChartNote {
   lane: number;
   visualVariant: number;
   targetHits?: number;
+  hand?: Direction;
 }
 
 export interface StageEvent {
@@ -67,16 +69,18 @@ export interface RuntimeNote extends ChartNote {
   quietBroken: boolean;
   tapCount: number;
   boosterHitSlots: number[];
+  boosterWrongSlots?: number[];
   beamStartJudgement?: Judgement;
   beamStartDeltaMs?: number;
 }
 
-export type GameAction = "tap" | "left" | "right";
+export type GameAction = "tap" | "left" | "right" | "pad-left" | "pad-right";
 
 export interface PerformanceGesture {
   noteId: string;
   phase: "strike" | "hold" | "release";
   slot: number;
+  hand?: Direction;
 }
 
 export interface HitFeedback {
@@ -86,6 +90,7 @@ export interface HitFeedback {
   deltaMs?: number;
   energyDelta: number;
   performance?: PerformanceGesture;
+  expectedHand?: Direction;
 }
 
 export interface RunGoal {
@@ -123,6 +128,10 @@ export interface SessionStats {
 }
 
 export interface SessionResult extends SessionStats {
+  playMode?: PlayMode;
+  rhythmPoints?: number;
+  rhythmTrace?: RhythmTracePoint[];
+  previousRhythmPoints?: number;
   accuracy: number;
   stability: number;
   earlyPercent: number;
@@ -133,6 +142,7 @@ export interface SessionResult extends SessionStats {
 }
 
 export interface GameSettings {
+  playMode?: PlayMode;
   musicVolume: number;
   sfxVolume: number;
   effectsStrength: number;
@@ -148,6 +158,7 @@ export interface StageRecord {
 }
 
 export interface ProgressData {
+  rhythmBests?: Record<string, RhythmBest>;
   version: 1;
   seenTutorial: boolean;
   unlockedStages: StageTheme[];
@@ -160,3 +171,6 @@ export interface ProgressData {
   records: Partial<Record<StageTheme, StageRecord>>;
   settings: GameSettings;
 }
+
+export interface RhythmTracePoint { time: number; points: number }
+export interface RhythmBest { points: number; trace: RhythmTracePoint[] }

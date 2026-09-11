@@ -7,7 +7,10 @@ import type {
   SessionResult,
   SessionStats,
   StageDefinition,
+  PlayMode,
+  RhythmTracePoint,
 } from "../types.ts";
+import { assignHands, handAtSlot, handForAction } from "../handPlay.ts";
 import { ChartEngine } from "./ChartEngine.ts";
 import {
   DIFFICULTIES,
@@ -27,13 +30,16 @@ export class GameSession {
   readonly stats: SessionStats;
   private forcedComplete = false;
   private driveActive = false;
+  rhythmPoints = 0;
+  private rhythmTrace: RhythmTracePoint[] = [];
   routeLane = 0;
 
   constructor(
     readonly stage: StageDefinition,
     readonly difficulty: Difficulty,
+    readonly playMode: PlayMode = "one",
   ) {
-    const chart = stage.notes[difficulty];
+    const chart = playMode === "duet" ? assignHands(stage.notes[difficulty]) : stage.notes[difficulty];
     this.chart = new ChartEngine(chart);
     this.stats = {
       score: 0,
@@ -107,8 +113,57 @@ export class GameSession {
   }
 
   input(action: GameAction, isDown: boolean, audioTime: number): HitFeedback | null {
+    const feedback = this.resolveInput(action, isDown, audioTime);
+    if (feedback?.performance && feedback.judgement && feedback.judgement !== "miss") {
+      const hand = handForAction(action);
+      if (hand) feedback.performance.hand = hand;
+      this.rhythmPoints += feedback.judgement === "perfect" ? 100 : feedback.judgement === "great" ? 70 : 40;
+      const note = this.chart.all().find(n => n.id === feedback.performance?.noteId)!;
+      const time = note.time + (feedback.performance.phase === "release" ? note.duration : note.type === "booster" ? feedback.performance.slot * note.duration / Math.max(1, note.targetHits ?? 4) : 0);
+      this.rhythmTrace.push({ time: Math.max(time, this.rhythmTrace.at(-1)?.time ?? 0), points: this.rhythmPoints });
+    }
+    return feedback;
+  }
+
+  private resolveInput(action: GameAction, isDown: boolean, audioTime: number): HitFeedback | null {
     const now = this.timing.getInputPlayhead(audioTime);
     if (now < 0 || this.isComplete(now)) return null;
+
+    let duetTarget: RuntimeNote | undefined;
+    const hand = handForAction(action);
+    if (this.playMode === "duet") {
+      if (!hand) return null;
+      const held = this.chart.holdingBeam();
+      if (!isDown && held?.hand !== hand) return null;
+      if (isDown && !held && !this.chart.active("quiet", now)) {
+        const roll = this.chart.active("booster", now) ?? this.chart.nearest(["booster"], now, this.difficulty);
+        const activeRoll = roll && now < roll.time + roll.duration - .0002 ? roll : undefined;
+        const target = activeRoll ?? this.chart.nearest(["spark", "beam", "switch"], now, this.difficulty);
+        duetTarget = target;
+        if (target) {
+          let slot = 0;
+          let targetTime = target.time;
+          let eligible = true;
+          if (target.type === "booster") {
+            const count = Math.max(1, target.targetHits ?? 4), interval = target.duration / count;
+            slot = Math.round((now - target.time) / interval); targetTime += slot * interval;
+            eligible = slot >= 0 && slot < count && Math.abs(now - targetTime) <= Math.min(DIFFICULTIES[this.difficulty].goodMs / 1000, interval * .42)
+              && !target.boosterHitSlots.includes(slot) && !target.boosterWrongSlots?.includes(slot);
+          }
+          const expectedHand = handAtSlot(target, slot);
+          if (eligible && hand !== expectedHand) {
+            const deltaMs = (now - targetTime) * 1000;
+            const result = target.type === "booster"
+              ? { judgement: "miss" as const, noteType: target.type, deltaMs, energyDelta: -3 }
+              : this.finish(target, "miss", deltaMs);
+            if (target.type === "booster") (target.boosterWrongSlots ??= []).push(slot);
+            return { ...result, label: "はんたい！", expectedHand };
+          }
+          if (target.type === "switch") action = target.direction ?? "left";
+          else action = "tap";
+        } else action = "tap";
+      } else action = "tap";
+    } else if (hand) return null;
 
     if (action !== "tap" && !this.hasSwitch) return null;
 
@@ -135,7 +190,7 @@ export class GameSession {
         return this.hitBooster(booster, now);
       }
 
-      const beam = this.chart.nearest(["beam"], now, this.difficulty);
+      const beam = this.playMode === "duet" ? duetTarget?.type === "beam" ? duetTarget : undefined : this.chart.nearest(["beam"], now, this.difficulty);
       if (beam) {
         const deltaMs = (now - beam.time) * 1000;
         const judgement = judgeTiming(deltaMs, this.difficulty);
@@ -147,7 +202,7 @@ export class GameSession {
           performance: { noteId: beam.id, phase: "hold", slot: 0 } };
       }
 
-      const spark = this.chart.nearest(["spark"], now, this.difficulty);
+      const spark = this.playMode === "duet" ? duetTarget?.type === "spark" ? duetTarget : undefined : this.chart.nearest(["spark"], now, this.difficulty);
       if (spark) {
         const deltaMs = (now - spark.time) * 1000;
         return { ...this.finish(spark, judgeTiming(deltaMs, this.difficulty), deltaMs),
@@ -214,7 +269,7 @@ export class GameSession {
     const slot = Math.round((now - booster.time) / interval);
     const slotTime = booster.time + slot * interval;
     const tolerance = Math.min(DIFFICULTIES[this.difficulty].goodMs / 1000, interval * 0.42);
-    if (slot < 0 || slot >= targetHits || Math.abs(now - slotTime) > tolerance || booster.boosterHitSlots.includes(slot)) {
+    if (slot < 0 || slot >= targetHits || Math.abs(now - slotTime) > tolerance || booster.boosterHitSlots.includes(slot) || booster.boosterWrongSlots?.includes(slot)) {
       return { label: "ひかる おとに あわせよう", noteType: "booster", energyDelta: -1 };
     }
     booster.boosterHitSlots.push(slot);
@@ -310,6 +365,9 @@ export class GameSession {
     const completed = completedGoalIds(getRunGoals(this.stage, this.difficulty), baseResult);
     return {
       ...baseResult,
+      playMode: this.playMode,
+      rhythmPoints: this.rhythmPoints,
+      rhythmTrace: this.rhythmTrace.map(point => ({ ...point })),
       missionStars: completed.length,
       completedGoalIds: completed,
     };

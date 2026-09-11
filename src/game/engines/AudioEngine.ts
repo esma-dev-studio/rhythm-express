@@ -1,4 +1,4 @@
-import type { Difficulty, GameSettings, HitFeedback, StageDefinition, StageTheme } from "../types.ts";
+import type { Difficulty, Direction, GameSettings, HitFeedback, StageDefinition, StageTheme } from "../types.ts";
 import { CHORD_PROGRESSIONS, createPerformanceScore, musicLevelForCombo, performanceKey, scaleFrequency, type PerformanceNote } from "../musicScore.ts";
 export { scaleFrequency } from "../musicScore.ts";
 
@@ -450,7 +450,7 @@ export class AudioEngine {
       this.guideVoices.delete(key);
     }
     // Play immediately: snapping to a future beat makes the controls feel late.
-    this.playPerformanceNote(note, now, feedback.judgement === "perfect" ? 1 : feedback.judgement === "great" ? .88 : .74);
+    this.playPerformanceNote(note, now, feedback.judgement === "perfect" ? 1 : feedback.judgement === "great" ? .88 : .74, feedback.performance?.hand);
   }
 
   setPerformance(combo: number): void { this.requestedMusicLevel = musicLevelForCombo(combo); }
@@ -472,7 +472,7 @@ export class AudioEngine {
     this.heldVoices = [];
   }
 
-  private playPerformanceNote(note: PerformanceNote, time: number, expression: number): void {
+  private playPerformanceNote(note: PerformanceNote, time: number, expression: number, hand?: Direction): void {
     if (!this.stage || !this.performanceGain) return;
     const hold = note.phase === "hold";
     if (hold) this.releasePerformanceVoice();
@@ -485,8 +485,8 @@ export class AudioEngine {
       }, this.performanceGain);
       if (gain) voices.push(gain);
     };
-    voice(note.frequency, hold ? .12 : .155, this.stage.theme === "moon" ? "sine" : "triangle");
-    voice(note.frequency * 2, hold ? .025 : .035, "sine", this.stage.theme === "moon" ? 4 : 0);
+    voice(note.frequency, hold ? .12 : hand === "right" ? .14 : .155, this.stage.theme === "moon" ? "sine" : "triangle");
+    voice(note.frequency * 2, hold ? .025 : hand === "right" ? .05 : .035, "sine", this.stage.theme === "moon" ? 4 : 0);
     if (this.bandLevel > 0 || this.driveActive) voice(note.frequency / 2, .027, "sine");
     if (hold) this.heldVoices = voices;
   }

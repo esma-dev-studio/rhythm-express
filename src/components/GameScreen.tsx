@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GameCanvas } from "./ExpeditionCanvas";
 import { getRhythmCue } from "../game/rhythmCue";
+import { HAND_COLORS, handForAction, playModeFor } from "../game/handPlay";
+import { rivalPointsAt } from "../game/rhythmRival";
 import { AudioEngine } from "../game/engines/AudioEngine";
 import { getTrain } from "../game/data/trains";
 import { DIFFICULTIES } from "../game/engines/JudgementEngine";
@@ -19,6 +21,8 @@ import {
 } from "../game/adventureEvents";
 import type {
   Difficulty,
+  Direction,
+  RhythmBest,
   GameAction,
   GameSettings,
   HitFeedback,
@@ -37,6 +41,7 @@ interface GameScreenProps {
   settings: GameSettings;
   trainColor: string;
   trainId: string;
+  rhythmBest?: RhythmBest;
   onComplete: (result: SessionResult) => void;
   onExit: () => void;
   onRestart: () => void;
@@ -78,11 +83,14 @@ export function GameScreen({
   settings,
   trainColor,
   trainId,
+  rhythmBest,
   onComplete,
   onExit,
   onRestart,
 }: GameScreenProps) {
-  const session = useMemo(() => new GameSession(stage, difficulty), [stage, difficulty]);
+  const playMode = playModeFor(settings);
+  const duet = playMode === "duet";
+  const session = useMemo(() => new GameSession(stage, difficulty, playMode), [stage, difficulty, playMode]);
   const effectsManager = useMemo(() => new EffectsManager(trainId), [trainId]);
   const goals = useMemo(() => getRunGoals(stage, difficulty), [stage, difficulty]);
   const encounters = useMemo(() => getAdventureEncounters(stage), [stage]);
@@ -93,6 +101,7 @@ export function GameScreen({
   const hitTimeline = useMemo(() => new HitFeedbackTimeline(), [session]);
   const [hitReceipt, setHitReceipt] = useState<HitVisual | null>(null);
   const [padReceipt, setPadReceipt] = useState<HitVisual | null>(null);
+  const [handReceipts, setHandReceipts] = useState<Partial<Record<Direction, HitVisual>>>({});
   const [paused, setPaused] = useState(false);
   const [resuming, setResuming] = useState(false);
   const [pausing, setPausing] = useState(false);
@@ -121,6 +130,8 @@ export function GameScreen({
     tap: new Set(),
     left: new Set(),
     right: new Set(),
+    "pad-left": new Set(),
+    "pad-right": new Set(),
   });
   const previousFrame = useRef(0);
   const pauseButtonRef = useRef<HTMLButtonElement>(null);
@@ -155,16 +166,20 @@ export function GameScreen({
       setHitReceipt(receipt);
       if (action === "tap") setPadReceipt(receipt);
       else if (receipt.kind === "miss") setPadReceipt(null);
+      const hand = action && handForAction(action);
+      if (hand) setHandReceipts(previous => ({ ...previous, [hand]: receipt }));
     }
     setFeedback(next);
     if (feedbackTimer.current) window.clearTimeout(feedbackTimer.current);
     feedbackTimer.current = window.setTimeout(() => {
       setFeedback(null); setHitReceipt(null); setPadReceipt(null);
+      setHandReceipts({});
     }, 760);
   }, [audio, effectsManager, hitTimeline, session]);
 
   const handleInput = useCallback((action: GameAction, isDown: boolean, eventTimeMs = performance.now()) => {
     if (!startedRef.current || pausedRef.current || completedRef.current) return;
+    if (duet && (action === "left" || action === "right")) action = action === "left" ? "pad-left" : "pad-right";
     const result = session.input(action, isDown, audio.eventTimeToAudioTime(eventTimeMs));
     const encounter = activeEncounterRef.current;
     const now = session.playhead(audio.now());
@@ -176,13 +191,14 @@ export function GameScreen({
     setScore(session.stats.score);
     setCombo(session.stats.combo);
     setRouteLane(session.routeLane);
-  }, [audio, session, showFeedback]);
+  }, [audio, duet, session, showFeedback]);
 
   const beginPointerInput = useCallback((action: GameAction, event: InputPointerEvent) => {
     const activePointers = activePointersRef.current[action];
     if (!activePointers.has(event.pointerId)) {
+      const wasInactive = activePointers.size === 0;
       activePointers.add(event.pointerId);
-      handleInput(action, true, event.timeStamp);
+      if (wasInactive) handleInput(action, true, event.timeStamp);
     }
     capturePointerSafely(event);
   }, [handleInput]);
@@ -250,9 +266,7 @@ export function GameScreen({
   }, [handleInput]);
 
   const clearActivePointers = useCallback(() => {
-    activePointersRef.current.tap.clear();
-    activePointersRef.current.left.clear();
-    activePointersRef.current.right.clear();
+    Object.values(activePointersRef.current).forEach(pointers => pointers.clear());
   }, []);
 
   const readLivePlayhead = useCallback(() => session.playhead(audio.now()), [audio, session]);
@@ -302,7 +316,11 @@ export function GameScreen({
         }
         const automaticFeedback = session.update(audioNow);
         for (const next of automaticFeedback) showFeedback(next);
-        const nextEffects = effectsManager.tick(delta);
+        let nextEffects = effectsManager.tick(delta);
+        if (duet && current >= 0 && nextEffects.driveReady && effectsManager.activateDrive()) {
+          session.activateDrive();
+          nextEffects = effectsManager.snapshot();
+        }
         session.setDriveActive(nextEffects.overdrive);
         audio.setPerformance(session.stats.combo);
         audio.setDrive(nextEffects.overdrive);
@@ -317,7 +335,7 @@ export function GameScreen({
           completedRef.current = true;
           audio.stop();
           audio.arrival();
-          onComplete(session.result());
+          onComplete({ ...session.result(), previousRhythmPoints: rhythmBest?.points });
           return;
         }
       }
@@ -325,7 +343,7 @@ export function GameScreen({
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [audio, continueWithoutSound, effectsManager, encounters, onComplete, session, showFeedback]);
+  }, [audio, continueWithoutSound, duet, effectsManager, encounters, onComplete, rhythmBest, session, showFeedback]);
 
   const pauseGame = useCallback(async () => {
     if (pauseInFlightRef.current || pausedRef.current || completedRef.current) return;
@@ -347,6 +365,14 @@ export function GameScreen({
       setPausing(false);
     }
   }, [audio, clearActivePointers, continueWithoutSound, session]);
+
+  const cancelPointerInput = (action: GameAction, event: InputPointerEvent) => {
+    if (activePointersRef.current[action].has(event.pointerId)) void pauseGame();
+    releasePointerSafely(event);
+  };
+  const cancelTouchInput = (action: GameAction) => {
+    if (!pointerEventsAvailable() && activePointersRef.current[action].size) void pauseGame();
+  };
 
   const resumeGame = useCallback(async () => {
     if (!pausedRef.current || pauseInFlightRef.current || resumeInFlightRef.current) return;
@@ -485,9 +511,11 @@ export function GameScreen({
     cue.mode === "rest" ? 0 : actionPulseAt(playhead, cue.time), effects.pulse * settings.effectsStrength,
   );
   const nextEvent = [...stage.events].reverse().find(event => event.time <= playhead);
+  const rivalPoints = rhythmBest ? rivalPointsAt(rhythmBest.trace, playhead) : 0;
+  const rhythmLead = session.rhythmPoints - rivalPoints;
 
   return (
-    <main className={"game-screen expedition-game game-" + stage.theme + (effects.overdrive ? " is-flow-drive" : "") + (reducedMotion ? " reduce-motion" : "")} data-testid="game-screen">
+    <main className={"game-screen expedition-game game-" + stage.theme + (duet ? " is-duet" : "") + (effects.overdrive ? " is-flow-drive" : "") + (reducedMotion ? " reduce-motion" : "")} data-testid="game-screen">
       <div className="game-hud" inert={paused}>
         <div className="hud-route">
           <span>{stage.name}</span>
@@ -512,6 +540,11 @@ export function GameScreen({
       </div>
 
       <div className="game-stage" inert={paused}>
+        {duet && <div className={"rhythm-rival" + (rhythmLead > 0 ? " is-ahead" : "")}>
+          <span>リズムてん <strong>{session.rhythmPoints.toLocaleString()}</strong></span>
+          <small>{rhythmBest ? rhythmLead > 0 ? `まえの じぶんより +${rhythmLead}` : rhythmLead === 0 ? "まえの じぶんと おなじ！" : `まえの じぶんまで あと ${-rhythmLead}` : "はじめの きろくを つくろう"}</small>
+          <i className="rival-track" aria-hidden="true"><b style={{ width: `${Math.min(100, session.rhythmPoints / Math.max(100, rhythmBest?.points ?? session.rhythmPoints) * 100)}%` }} /></i>
+        </div>}
         <GameCanvas
           stage={stage}
           session={session}
@@ -582,7 +615,7 @@ export function GameScreen({
         {countdown > 0 && (
           <div className="countdown-overlay" aria-live="assertive">
             <span>{countdown}</span>
-            <small>きみが メロディーを ひくよ！<br />あと {countdown} はく。おとを きこう</small>
+            <small>{duet ? "← あおは ひだり　ピンクは みぎ →" : "きみが メロディーを ひくよ！"}<br />あと {countdown} はく。おとを きこう</small>
           </div>
         )}
       </div>
@@ -590,7 +623,30 @@ export function GameScreen({
       <p id="beat-timing-help" className="sr-only">
         ひかりが ○に ぴったり かさなったら おす。ながい ひかりは おしたまま。
       </p>
-      <div className={"touch-controls" + (hasSwitch ? "" : " beat-only")} aria-label="あそぶ ボタン" inert={paused}>
+      {duet ? <div className="duet-controls" aria-label="りょうてで あそぶ ボタン" inert={paused}>
+        <div className="duet-instruction"><span>○に きたら おす</span><span>{effects.overdrive ? "★ スーパーそうこう！" : "← ひだり　・　みぎ →"}</span></div>
+        {(["left", "right"] as const).map(hand => {
+          const action: GameAction = hand === "left" ? "pad-left" : "pad-right";
+          const receipt = handReceipts[hand];
+          const activeReceipt = receipt && playhead - receipt.time <= .7 ? receipt : undefined;
+          const expected = cue.hand === hand;
+          return <button key={hand} type="button" className={"hand-pad hand-" + hand + (expected ? " is-next" : "")}
+            style={{ "--hand-color": HAND_COLORS[hand], "--beat-pulse": expected ? scaledPulse : 0 } as React.CSSProperties}
+            data-testid={"hand-" + hand} data-game-input="true" aria-describedby="beat-timing-help"
+            aria-label={hand === "left" ? "あおの ひだり" : "ピンクの みぎ"}
+            onPointerDown={event => beginPointerInput(action, event)} onPointerUp={event => endPointerInput(action, event)}
+            onPointerCancel={event => cancelPointerInput(action, event)} onLostPointerCapture={event => cancelPointerInput(action, event)}
+            onTouchStart={event => beginTouchInput(action, event)} onTouchEnd={event => endTouchInput(action, event)} onTouchCancel={() => cancelTouchInput(action)}
+            onMouseDown={event => beginMouseInput(action, event)} onMouseUp={event => endMouseInput(action, event)} onMouseLeave={event => endMouseInput(action, event)}
+            onContextMenu={event => event.preventDefault()}>
+            <span className="hand-symbol" aria-hidden="true">{hand === "left" ? "←" : "→"}</span>
+            <span className="hand-copy"><strong>{hand === "left" ? "ひだり" : "みぎ"}</strong><small>{expected ? cue.action : cue.mode === "rest" ? "おやすみ" : hand === "left" ? "あおの おと" : "ピンクの おと"}</small></span>
+            {activeReceipt && <span key={activeReceipt.id} className={"hand-judgement hit-" + activeReceipt.kind} style={{ "--hit-color": HIT_LOOKS[activeReceipt.kind].color } as React.CSSProperties}>
+              <b>{HIT_LOOKS[activeReceipt.kind].symbol}</b><small>{activeReceipt.title}</small>
+            </span>}
+          </button>;
+        })}
+      </div> : <div className={"touch-controls" + (hasSwitch ? "" : " beat-only")} aria-label="あそぶ ボタン" inert={paused}>
         <button
           type="button"
           className="direction-pad"
@@ -664,10 +720,10 @@ export function GameScreen({
             <i className="drive-charge"><b style={{ width: `${Math.min(100, effects.driveProgress * 100)}%` }} /></i>
           </button>
         </div>
-      </div>
+      </div>}
 
       <p className="keyboard-hint">
-        {hasSwitch ? "スペース: おす　← →: みち　F: スーパー　P: やすむ" : "スペース: おす　F: スーパー　P: やすむ"}
+        {duet ? "パソコンなら A・L または ←・→　P: やすむ" : hasSwitch ? "スペース: おす　← →: みち　F: スーパー　P: やすむ" : "スペース: おす　F: スーパー　P: やすむ"}
       </p>
 
       {paused && (

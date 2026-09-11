@@ -8,6 +8,7 @@ import { STAGES } from "../game/data/stages";
 import { observeMediaQuery, traceRoundedRect as rect } from "../game/browserCompatibility";
 import { noteScreenX, rhythmGeometry, routeArtwork } from "../game/presentation";
 import { getRhythmCue } from "../game/rhythmCue";
+import { HAND_COLORS, handAtSlot } from "../game/handPlay";
 import { beatPosition } from "../game/musicScore";
 import type { HitVisual } from "../game/hitFeedback";
 import { drawHitBursts } from "../game/hitBurstRenderer";
@@ -108,11 +109,14 @@ function drawExpress(c: CanvasRenderingContext2D, x: number, y: number, scale: n
 function drawNote(c: CanvasRenderingContext2D, n: RuntimeNote, x: number, y: number, pps: number, radius: number, tx: number) {
   if (n.state === "resolved") return;
   const size = radius * .66; c.save(); c.translate(x, y); c.lineWidth = 2.5; c.strokeStyle = "#fff1c9";
+  const handColor = n.hand ? HAND_COLORS[n.hand] : undefined;
   if (n.type === "beam") {
     const end = n.duration * pps, start = n.state === "holding" ? Math.max(0, tx - x) : 0;
-    c.fillStyle = n.state === "holding" ? "#a7ffe1" : "#45bca7"; box(c, start, -size * .6, end - start, size * 1.2, size * .5);
+    c.fillStyle = handColor ?? (n.state === "holding" ? "#a7ffe1" : "#45bca7"); box(c, start, -size * .6, end - start, size * 1.2, size * .5);
     c.fillStyle = "#eafff7"; circle(c, end, 0, size * .66); c.fill(); c.fillStyle = "#1b6866"; circle(c, end, 0, size * .32); c.fill();
-    c.fillStyle = "#86f1d7"; circle(c, start, 0, size); c.fill(); c.strokeStyle = "#e7fff6"; c.stroke(); c.fillStyle = "#103c3c"; box(c, start - 7, -3, 14, 6, 3);
+    c.fillStyle = handColor ?? "#86f1d7"; circle(c, start, 0, size); c.fill(); c.strokeStyle = "#e7fff6"; c.stroke(); c.fillStyle = "#103c3c";
+    if (n.hand) { c.font = `bold ${size * 1.3}px sans-serif`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(n.hand === "left" ? "←" : "→", start, 0); }
+    else box(c, start - 7, -3, 14, 6, 3);
   } else if (n.type === "quiet") {
     const length = Math.max(52, n.duration * pps); c.fillStyle = "#8297a233"; box(c, -size, -size - 3, length + size * 2, size * 2 + 6, 8);
     c.save(); rect(c, -size, -size - 3, length + size * 2, size * 2 + 6, 8); c.clip(); c.strokeStyle = "#b8c9d54a"; c.lineWidth = 9;
@@ -122,13 +126,19 @@ function drawNote(c: CanvasRenderingContext2D, n: RuntimeNote, x: number, y: num
     const count = Math.max(1, n.targetHits ?? 4), length = n.duration * pps;
     c.strokeStyle = "#ffd27b55"; c.lineWidth = 4; c.beginPath(); c.moveTo(0, 0); c.lineTo(length * (count - 1) / count, 0); c.stroke();
     for (let i = 0; i < count; i++) {
-      const hit = n.boosterHitSlots.includes(i); c.fillStyle = hit ? "#365453" : "#ffd27b"; circle(c, length * i / count, 0, size * .76); c.fill(); c.fillStyle = hit ? "#86f1d7" : "#5d441b"; circle(c, length * i / count, 0, 4); c.fill();
+      const hit = n.boosterHitSlots.includes(i), wrong = n.boosterWrongSlots?.includes(i), hand = handAtSlot(n, i);
+      c.fillStyle = hit || wrong ? "#365453" : hand ? HAND_COLORS[hand] : "#ffd27b"; circle(c, length * i / count, 0, size * .82); c.fill();
+      c.fillStyle = hit ? "#86f1d7" : wrong ? "#ffa8b2" : "#152b38";
+      if (hand) { c.font = `bold ${size * 1.14}px sans-serif`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(hit ? "✓" : wrong ? "×" : hand === "left" ? "←" : "→", length * i / count, 0); }
+      else { circle(c, length * i / count, 0, 4); c.fill(); }
     }
   } else if (n.type === "switch") {
-    c.fillStyle = "#bba3ff"; box(c, -size, -size, size * 2, size * 2, 8); c.fillStyle = "#231742"; c.font = `bold ${size * 1.5}px sans-serif`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(n.direction === "left" ? "←" : "→", 0, 0);
+    c.fillStyle = handColor ?? "#bba3ff"; box(c, -size, -size, size * 2, size * 2, 8); c.fillStyle = "#231742"; c.font = `bold ${size * 1.5}px sans-serif`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(n.direction === "left" ? "←" : "→", 0, 0);
   } else {
-    c.shadowColor = "#ffd27b"; c.shadowBlur = 10; c.fillStyle = "#ffd27b"; circle(c, 0, 0, size); c.fill(); c.shadowBlur = 0; c.stroke();
-    c.fillStyle = "#65491d"; circle(c, 0, 0, size * .28); c.fill(); c.fillStyle = "#fff6d8"; circle(c, -size * .25, -size * .28, size * .14); c.fill();
+    c.shadowColor = handColor ?? "#ffd27b"; c.shadowBlur = 10; c.fillStyle = handColor ?? "#ffd27b"; circle(c, 0, 0, size); c.fill(); c.shadowBlur = 0; c.stroke();
+    c.fillStyle = "#152b38";
+    if (n.hand) { c.font = `bold ${size * 1.5}px sans-serif`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(n.hand === "left" ? "←" : "→", 0, 0); }
+    else { circle(c, 0, 0, size * .28); c.fill(); c.fillStyle = "#fff6d8"; circle(c, -size * .25, -size * .28, size * .14); c.fill(); }
   }
   c.restore();
 }
@@ -146,7 +156,7 @@ function drawLane(c: CanvasRenderingContext2D, w: number, h: number, s: SceneSta
   }
   const rest = cue.mode === "rest" && s.notes.some(n => n.type === "quiet" && n.time <= s.playhead && n.time + n.duration > s.playhead);
   const due = cue.time !== null && Math.abs(cue.time - s.playhead) < .075;
-  const ring = rest ? "#9bacbb" : cue.mode === "release" ? "#86f1d7" : "#ffd27b";
+  const ring = rest ? "#9bacbb" : cue.hand ? HAND_COLORS[cue.hand] : cue.mode === "release" ? "#86f1d7" : "#ffd27b";
   c.fillStyle = rest ? "#8eacbb14" : "#ffe4a514"; c.fillRect(tx - r - 7, laneTop + 4, (r + 7) * 2, laneBottom - laneTop - 4);
   c.strokeStyle = ring; c.lineWidth = 2; c.beginPath(); c.moveTo(tx, laneTop + 8); c.lineTo(tx, ty - r - 7); c.moveTo(tx, ty + r + 7); c.lineTo(tx, laneBottom - 7); c.stroke();
   c.save(); rect(c, 12, ty - r - 9, w - 24, r * 2 + 18, 12); c.clip();
@@ -162,7 +172,8 @@ function drawLane(c: CanvasRenderingContext2D, w: number, h: number, s: SceneSta
     const progress = held ? Math.max(0, Math.min(1, (s.playhead - held.time) / held.duration)) : 0;
     c.beginPath(); c.arc(tx, ty, r + 7, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress); c.stroke();
   }
-  c.textBaseline = "middle"; c.textAlign = "left"; c.font = "bold 14px sans-serif"; c.fillStyle = "#c5d9df"; c.fillText(cue.label, 20, laneTop - 13);
+  c.textBaseline = "middle"; c.textAlign = "left"; c.font = "bold 14px sans-serif"; c.fillStyle = ring;
+  c.fillText(cue.hand ? `${cue.hand === "left" ? "← あお・ひだり" : "ピンク・みぎ →"}　${cue.mode === "release" ? "おわりで はなす" : cue.mode === "hold" ? "ながおし" : "○で おす"}` : cue.label, 20, laneTop - 13);
   c.textAlign = "right"; c.font = "13px sans-serif"; c.fillStyle = "#8aa6b1"; if (w > 550) c.fillText("ひかりは こっちから  ←", w - 24, laneTop - 13);
   c.textAlign = "center"; c.font = "bold 13px sans-serif"; c.fillStyle = ring; c.fillText(rest ? "まとう" : "ここ！", tx, h - 7);
 }
